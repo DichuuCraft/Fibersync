@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 1,
+    "id": "fibersync",
+    "version": "${version}",
+  
+    "name": "FibeRsync",
+    "description": "Backup/restore mod",
+    "authors": [
+      "hadroncfy"
+    ],
+    "contact": {
+      "homepage": "https://github.com/DichuuCraft/SReplay",
+      "sources": "https://github.com/DichuuCraft/SReplay"
+    },
+  
+    "license": "MIT",
+  
+    "environment": "*",
+    "entrypoints": {
+      "main": [
+        "com.hadroncfy.fibersync.FibersyncMod"
+      ]
+    },
+    "mixins": [
+      "fibersync.mixins.json"
+    ],
+  
+    "depends": {
+      "fabricloader": ">=0.7.4",
+      "minecraft": "1.14.*"
+    },
+    "suggests": {
+      "flamingo": "*"
+    }
+  }
