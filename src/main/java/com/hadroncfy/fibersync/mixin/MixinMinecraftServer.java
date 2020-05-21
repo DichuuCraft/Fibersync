@@ -2,22 +2,17 @@ package com.hadroncfy.fibersync.mixin;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 
 import com.google.gson.JsonElement;
+import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.command.BackupCommand;
+import com.hadroncfy.fibersync.config.TextRenderer;
 import com.hadroncfy.fibersync.interfaces.IServer;
-import com.hadroncfy.fibersync.restart.AwaitingPlayer;
 import com.hadroncfy.fibersync.restart.Limbo;
-import com.hadroncfy.fibersync.restart.ServerDummyPlayHandler;
-import com.mojang.authlib.GameProfileRepository;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
-import com.mojang.datafixers.DataFixer;
 import com.mojang.datafixers.Dynamic;
 import com.mojang.datafixers.types.JsonOps;
 
@@ -25,7 +20,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -34,11 +28,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.datafixer.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
-import net.minecraft.server.ServerNetworkIo;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.UserCache;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.WorldSaveHandler;
@@ -59,9 +51,7 @@ public abstract class MixinMinecraftServer implements IServer {
     private LevelStorage levelStorage;
     @Shadow
     private boolean bonusChest;
-
-    @Shadow
-    @Final
+    @Shadow @Final
     private Map<DimensionType, ServerWorld> worlds;
 
     @Shadow
@@ -71,7 +61,8 @@ public abstract class MixinMinecraftServer implements IServer {
     protected abstract void upgradeWorld(String string);
 
     @Shadow
-    protected abstract void createWorlds(WorldSaveHandler worldSaveHandler, LevelProperties properties, LevelInfo levelInfo, WorldGenerationProgressListener worldGenerationProgressListener);
+    protected abstract void createWorlds(WorldSaveHandler worldSaveHandler, LevelProperties properties,
+            LevelInfo levelInfo, WorldGenerationProgressListener worldGenerationProgressListener);
 
     @Shadow
     protected abstract void prepareStartRegion(WorldGenerationProgressListener worldGenerationProgressListener);
@@ -100,9 +91,10 @@ public abstract class MixinMinecraftServer implements IServer {
     @Shadow
     public abstract void setDifficulty(Difficulty difficulty, boolean bl);
 
-    private void loadWorld(String name, String serverName, long seed, LevelGeneratorType generatorType, JsonElement generatorSettings, WorldGenerationProgressListener startRegionListener){
+    private void loadWorld(String name, String serverName, long seed, LevelGeneratorType generatorType,
+            JsonElement generatorSettings, WorldGenerationProgressListener startRegionListener) {
         upgradeWorld(name);
-        WorldSaveHandler worldSaveHandler = levelStorage.createSaveHandler(name, (MinecraftServer)(Object) this);
+        WorldSaveHandler worldSaveHandler = levelStorage.createSaveHandler(name, (MinecraftServer) (Object) this);
         loadWorldResourcePack(levelName, worldSaveHandler);
         LevelProperties levelProperties = worldSaveHandler.readProperties();
         LevelInfo levelInfo2;
@@ -110,7 +102,8 @@ public abstract class MixinMinecraftServer implements IServer {
             if (isDemo()) {
                 levelInfo2 = MinecraftServer.DEMO_LEVEL_INFO;
             } else {
-                levelInfo2 = new LevelInfo(seed, getDefaultGameMode(), shouldGenerateStructures(), this.isHardcore(), generatorType);
+                levelInfo2 = new LevelInfo(seed, getDefaultGameMode(), shouldGenerateStructures(), this.isHardcore(),
+                        generatorType);
                 levelInfo2.setGeneratorOptions(generatorSettings);
                 if (bonusChest) {
                     levelInfo2.setBonusChest();
@@ -124,7 +117,8 @@ public abstract class MixinMinecraftServer implements IServer {
         }
 
         loadWorldDataPacks(worldSaveHandler.getWorldDir(), levelProperties);
-        // WorldGenerationProgressListener worldGenerationProgressListener = worldGenerationProgressListenerFactory.create(11);
+        // WorldGenerationProgressListener worldGenerationProgressListener =
+        // worldGenerationProgressListenerFactory.create(11);
         createWorlds(worldSaveHandler, levelProperties, levelInfo2, startRegionListener);
         setDifficulty(getDefaultDifficulty(), true);
         prepareStartRegion(startRegionListener);
@@ -135,7 +129,7 @@ public abstract class MixinMinecraftServer implements IServer {
 
     @Override
     public void reloadAll(BackupEntry entry, Runnable callback) {
-        if (reloadCB == null){
+        if (reloadCB == null) {
             reloadCB = callback;
             backupEntry = entry;
         }
@@ -144,12 +138,11 @@ public abstract class MixinMinecraftServer implements IServer {
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTick(BooleanSupplier booleanSupplier, CallbackInfo ci) {
         if (reloadCB != null) {
+            final Limbo limbo = new Limbo((MinecraftServer) (Object) this);
 
-            final Limbo limbo = new Limbo();
-            limbo.acceptPlayersFrom((MinecraftServer) (Object) this);
-            backupEntry.back(BackupCommand.getWorldDir((MinecraftServer) (Object) this));
+            limbo.start();
             LOGGER.info("Purging worlds");
-            for (ServerWorld world: worlds.values()){
+            for (ServerWorld world : worlds.values()) {
                 try {
                     world.close();
                 } catch (IOException e) {
@@ -160,8 +153,16 @@ public abstract class MixinMinecraftServer implements IServer {
             worlds.clear();
 
             LOGGER.info("Rolling back");
-            loadWorld(levelName, prop.getLevelName(), prop.getSeed(), prop.getGeneratorType(), Dynamic.convert(NbtOps.INSTANCE, JsonOps.INSTANCE, prop.getGeneratorOptions()), limbo);
-            limbo.sendPlayersBack((MinecraftServer)(Object) this);
+            try {
+                backupEntry.back(BackupCommand.getWorldDir((MinecraftServer) (Object) this),
+                        limbo.getFileCopyListener());
+            } catch (NoSuchAlgorithmException | IOException e) {
+                e.printStackTrace();
+                limbo.broadCast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));
+            }
+            loadWorld(levelName, prop.getLevelName(), prop.getSeed(), prop.getGeneratorType(), Dynamic.convert(NbtOps.INSTANCE, JsonOps.INSTANCE, prop.getGeneratorOptions()), limbo.getWorldGenListener());
+            limbo.end();
+
             reloadCB.run();
             reloadCB = null;
         }

@@ -1,98 +1,138 @@
 package com.hadroncfy.fibersync.restart;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
-import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
+import com.hadroncfy.fibersync.util.copy.FileCopyProgressListener;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import net.minecraft.entity.boss.BossBar;
-import net.minecraft.entity.boss.ServerBossBar;
+import net.minecraft.network.ClientConnection;
 import net.minecraft.network.Packet;
-import net.minecraft.network.packet.s2c.play.BossBarS2CPacket;
+import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.world.chunk.ChunkStatus;
+import net.minecraft.text.Text;
 import net.minecraft.world.dimension.DimensionType;
 
-public class Limbo implements WorldGenerationProgressListener {
+public class Limbo implements Runnable {
     private static final int SPAWN_RADIUS = 11;
     private static final Logger LOGGER = LogManager.getLogger();
     private final List<AwaitingPlayer> players = new ArrayList<>();
-    private final BossBar progressBar = new ServerBossBar(FibersyncMod.getFormat().startRegionBarTitle, BossBar.Color.GREEN, BossBar.Style.PROGRESS);
-    private int generatedChunk = 0;
-    private final int totalChunk = (SPAWN_RADIUS * 2 + 1) * (SPAWN_RADIUS * 2 + 1);
-    private boolean stopped = false;
+    private volatile boolean running = false;
+    private final Thread ticker = new Thread(this);
+    private final MinecraftServer server;
+    private final RollBackProgressListener rollBackProgressListener = new RollBackProgressListener(this);
 
-    public void acceptPlayersFrom(MinecraftServer server) {
-        final PlayerManager playerManager = server.getPlayerManager();
-        for (ServerPlayerEntity player : new ArrayList<>(playerManager.getPlayerList())) {
-            playerManager.remove(player);
-            AwaitingPlayer p = new AwaitingPlayer(this, player);
-            players.add(p);
-        }
+    public Limbo(MinecraftServer server) {
+        this.server = server;
     }
 
-    public void sendPlayersBack(MinecraftServer server) {
+    public void start() {
+        running = true;
+        for (ServerPlayerEntity player : new ArrayList<>(server.getPlayerManager().getPlayerList())) {
+            server.getPlayerManager().remove(player);
+            onPlayerConnect(player, player.networkHandler.connection);
+        }
+        ((IPlayerManager)server.getPlayerManager()).setLimbo(this);
+        ticker.start();
+    }
+
+    public WorldGenerationProgressListener getWorldGenListener(){
+        return rollBackProgressListener;
+    }
+
+    public FileCopyProgressListener getFileCopyListener(){
+        return rollBackProgressListener;
+    }
+
+    public void onPlayerConnect(ServerPlayerEntity player, ClientConnection connection){
+        AwaitingPlayer p = new AwaitingPlayer(this, player, connection);
+        
+        rollBackProgressListener.onPlayerConnected(p);
+        connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0));
+        
+        LOGGER.info("Player {} joined limbo", player.getGameProfile().getName());
+        addPlayer(p);
+    }
+
+    private synchronized void addPlayer(AwaitingPlayer p){
+        players.add(p);
+    }
+
+    public void end() {
         final PlayerManager playerManager = server.getPlayerManager();
         final IPlayerManager pm = (IPlayerManager) playerManager;
         final ServerWorld dummy = server.getWorld(DimensionType.OVERWORLD);
-        
-        sendToAll(new BossBarS2CPacket(BossBarS2CPacket.Type.REMOVE, progressBar));
 
+        running = false;
+        try {
+            ticker.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        removeRemovedPlayers();
+
+        rollBackProgressListener.end();
+
+        pm.setLimbo(null);
         pm.setShouldRefreshScreen(true);
         for (AwaitingPlayer player : players) {
-            // we can't just create a new ServerPlayerEntity here since the original player may
-            // be the instance of an inherited class of ServerPlayerEntity, such as 
-            // carpet.patches.EntityPlayerMPFake, or com.hadroncfy.sreplay.recording.Photographer.
+            // we can't just create a new ServerPlayerEntity here since the original player
+            // may
+            // be the instance of an inherited class of ServerPlayerEntity, such as
+            // carpet.patches.EntityPlayerMPFake, or
+            // com.hadroncfy.sreplay.recording.Photographer.
             player.getEntity().setWorld(dummy); // avoid NullPointException when loading player data
             player.getEntity().removed = false;
             playerManager.onPlayerConnect(player.getConnection(), player.getEntity());
         }
         pm.setShouldRefreshScreen(false);
+        players.clear();
     }
 
-    public void sendToAll(Packet<?> packet){
-        for (AwaitingPlayer player: players){
+    public void sendToAll(Packet<?> packet) {
+        for (AwaitingPlayer player : players) {
             player.getConnection().send(packet);
         }
     }
 
-    void removePlayer(AwaitingPlayer player) {
-        players.remove(player);
+    public void broadCast(Text txt){
+        sendToAll(new ChatMessageS2CPacket(txt));
     }
 
     public void tick() {
-
+        removeRemovedPlayers();
+        server.getNetworkIo().tick();
     }
 
-    @Override
-    public void start(ChunkPos spawnPos) {
-        progressBar.setPercent(0);
-        sendToAll(new BossBarS2CPacket(BossBarS2CPacket.Type.ADD, progressBar));
-    }
-
-    @Override
-    public void setChunkStatus(ChunkPos pos, ChunkStatus status) {
-        if (!stopped && status == ChunkStatus.FULL){
-            generatedChunk++;
-            LOGGER.info("Spawn chunk: {}/{}", generatedChunk, totalChunk);
-            progressBar.setPercent((float)generatedChunk / (float)totalChunk);
-            sendToAll(new BossBarS2CPacket(BossBarS2CPacket.Type.UPDATE_PCT, progressBar));
+    private synchronized void removeRemovedPlayers(){
+        for (Iterator<AwaitingPlayer> iterator = players.iterator(); iterator.hasNext();){
+            AwaitingPlayer p = iterator.next();
+            if (p.isRemoved()){
+                iterator.remove();
+                LOGGER.info("Player {} left limbo", p.getEntity().getGameProfile().getName());
+            }
         }
     }
 
     @Override
-    public void stop() {
-        progressBar.setPercent(1);
-        stopped = true;
-        sendToAll(new BossBarS2CPacket(BossBarS2CPacket.Type.UPDATE_PCT, progressBar));
+    public void run() {
+        while (running) {
+            tick();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

@@ -16,9 +16,9 @@ public class Config {
     .registerTypeAdapterFactory(new LowercaseEnumTypeAdapterFactory())
     .registerTypeAdapter(SimpleDateFormat.class, new SimpleDateFormatSerializer()).create();
 
-    public String rsyncPath = "rsync";
     public String backupDir = "config/fibersync";
     public SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+    public int defaultCountDown = 20;
 
     public Formats formats = new Formats();
 }

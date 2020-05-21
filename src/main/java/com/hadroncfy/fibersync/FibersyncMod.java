@@ -25,7 +25,7 @@ public class FibersyncMod implements ModInitializer {
     private static Config config;
     public static final BackupCommand BACKUP_COMMAND = new BackupCommand(() -> config);
 
-    public static void loadConfig() throws IOException {
+    public static void loadConfig() throws IOException, JsonParseException {
         File c = new File("config", "fibersync.json");
         if (c.exists()){
             try (Reader reader = new InputStreamReader(new FileInputStream(c), StandardCharsets.UTF_8)){

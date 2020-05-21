@@ -10,7 +10,7 @@ public class Formats {
         return new LiteralText(s).setStyle(new Style().setColor(Formatting.RED));
     }
     public Text confirmationHint = new LiteralText("[Fibersync] 使用")
-        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
+        .append(new LiteralText("/fs confirm $1").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("以确认此次操作")),
     invalidConfirmationCode = red("无效的确认码"),
     opCancelled = new LiteralText("操作已取消"),
@@ -30,7 +30,14 @@ public class Formats {
     backupNotExist = red("[Fibersync] 该备份不存在"),
     rollbackAlert = new LiteralText("[Fibersync] 将要回档至")
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD))),
+    rollbackConfirmedAlert = new LiteralText("[Fibersync] $1：将要回档至")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD))),
     rollbackStarted = new LiteralText("[Fibersync] 正在回档"),
     rollbackFinished = new LiteralText("[Fibersync] 回档完成"),
-    startRegionBarTitle = new LiteralText("出生点生成进度");
+    startRegionBarTitle = new LiteralText("生成出生点"),
+    fileCopyBarTitle = new LiteralText("复制存档文件"),
+    failedToCopyLevelFiles = red("[Fibersync] 复制存档文件失败：$1"),
+    countDownTitle = new LiteralText("准备回档：$1"),
+    rollbackAborted = new LiteralText("[Fibersync] $1：已取消回档"),
+    nothingToAbort = red("[Fibersync] 无可取消的操作");
 }

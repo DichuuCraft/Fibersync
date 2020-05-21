@@ -9,9 +9,10 @@ public class AwaitingPlayer {
     private final ServerPlayerEntity entity;
     private final ClientConnection connection;
     private final ServerDummyPlayHandler handler;
-    public AwaitingPlayer(Limbo limbo, ServerPlayerEntity entity){
+    private boolean removed = false;
+    public AwaitingPlayer(Limbo limbo, ServerPlayerEntity entity, ClientConnection connection){
         this.entity = entity;
-        connection = entity.networkHandler.connection;
+        this.connection = connection;
         entity.world = null;
         entity.networkHandler = null;
         handler = new ServerDummyPlayHandler(limbo, this);
@@ -23,5 +24,14 @@ public class AwaitingPlayer {
 
     public ClientConnection getConnection(){
         return connection;
+ 
+    }
+
+    public boolean isRemoved(){
+        return removed;
+    }
+
+    public void markAsRemoved(){
+        removed = true;
     }
 }

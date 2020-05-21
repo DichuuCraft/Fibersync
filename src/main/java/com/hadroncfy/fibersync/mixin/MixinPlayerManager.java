@@ -1,6 +1,7 @@
 package com.hadroncfy.fibersync.mixin;
 
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
+import com.hadroncfy.fibersync.restart.Limbo;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,6 +17,7 @@ import net.minecraft.world.dimension.DimensionType;
 @Mixin(PlayerManager.class)
 public class MixinPlayerManager implements IPlayerManager {
     private boolean shouldRefreshScreen;
+    private Limbo limbo = null;
 
     @Inject(method = "onPlayerConnect", at = @At(
         value = "INVOKE", 
@@ -34,8 +36,21 @@ public class MixinPlayerManager implements IPlayerManager {
         }
     }
 
+    @Inject(method = "onPlayerConnect", at = @At("HEAD"), cancellable = true)
+    private void onPlayerJoin(ClientConnection connection, ServerPlayerEntity player, CallbackInfo ci){
+        if (limbo != null){
+            limbo.onPlayerConnect(player, connection);
+            ci.cancel();
+        }
+    }
+
     @Override
     public void setShouldRefreshScreen(boolean bl) {
         shouldRefreshScreen = bl;
+    }
+
+    @Override
+    public void setLimbo(Limbo limbo) {
+        this.limbo = limbo;
     }
 }

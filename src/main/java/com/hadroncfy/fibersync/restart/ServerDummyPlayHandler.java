@@ -66,12 +66,11 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onDisconnected(Text reason) {
-        limbo.removePlayer(player);
+        player.markAsRemoved();
     }
 
     @Override
     public ClientConnection getConnection() {
-        // TODO Auto-generated method stub
         return player.getConnection();
     }
 
