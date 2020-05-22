@@ -91,6 +91,9 @@ public abstract class MixinMinecraftServer implements IServer {
     @Shadow
     public abstract void setDifficulty(Difficulty difficulty, boolean bl);
 
+    @Shadow
+    private int ticks;
+
     private void loadWorld(String name, String serverName, long seed, LevelGeneratorType generatorType,
             JsonElement generatorSettings, WorldGenerationProgressListener startRegionListener) {
         upgradeWorld(name);
@@ -126,6 +129,10 @@ public abstract class MixinMinecraftServer implements IServer {
 
     private Runnable reloadCB;
     private BackupEntry backupEntry;
+
+    private Runnable tickTask;
+    private int tickTaskPeriod;
+    private int tickBase;
 
     @Override
     public void reloadAll(BackupEntry entry, Runnable callback) {
@@ -166,5 +173,22 @@ public abstract class MixinMinecraftServer implements IServer {
             reloadCB.run();
             reloadCB = null;
         }
+    }
+
+    @Inject(method = "tick", at = @At(
+        value = "INVOKE",
+        target = "Lnet/minecraft/server/MinecraftServer;tickWorlds(Ljava/util/function/BooleanSupplier;)V"
+    ))
+    private void onTickWorld(BooleanSupplier booleanSupplier, CallbackInfo ci){
+        if (tickTask != null && (ticks - tickBase) % tickTaskPeriod == 0){
+            tickTask.run();
+        }
+    }
+
+    @Override
+    public void setTickTask(Runnable task, int period) {
+        tickTask = task;
+        tickTaskPeriod = period;
+        tickBase = ticks;
     }
 }

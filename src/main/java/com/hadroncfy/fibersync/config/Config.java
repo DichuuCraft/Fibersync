@@ -18,7 +18,7 @@ public class Config {
 
     public String backupDir = "config/fibersync";
     public SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
-    public int defaultCountDown = 20;
+    public int defaultCountDown = 20, maxBackupCount = 10;
 
     public Formats formats = new Formats();
 }

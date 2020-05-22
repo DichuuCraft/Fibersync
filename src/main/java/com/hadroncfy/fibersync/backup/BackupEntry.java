@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 
 import com.hadroncfy.fibersync.util.copy.FileCopier;
-import com.hadroncfy.fibersync.util.copy.FileCopyProgressListener;
+import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 public class BackupEntry {
     private final BackupInfo info;
@@ -40,7 +40,7 @@ public class BackupEntry {
         return dir.resolve("info.json").toFile().exists() && checkWorldDir();
     }
 
-    public void doBackup(Path worldDir, FileCopyProgressListener listener) throws IOException,
+    public void doBackup(Path worldDir, FileOperationProgressListener listener) throws IOException,
             NoSuchAlgorithmException {
         File dirFile = dir.toFile();
         if (!dirFile.exists()) {
@@ -57,7 +57,11 @@ public class BackupEntry {
         FileCopier.copy(worldDir, backupDir, listener);
     }
 
-    public void back(Path worldDir, FileCopyProgressListener listener) throws NoSuchAlgorithmException, IOException {
+    public void delete() throws IOException {
+        FileCopier.deleteFileTree(dir);
+    }
+
+    public void back(Path worldDir, FileOperationProgressListener listener) throws NoSuchAlgorithmException, IOException {
         FileCopier.copy(dir.resolve("world"), worldDir, listener);
     }
 }

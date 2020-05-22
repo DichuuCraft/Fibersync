@@ -39,7 +39,7 @@ public class MixinPlayerManager implements IPlayerManager {
     @Inject(method = "onPlayerConnect", at = @At("HEAD"), cancellable = true)
     private void onPlayerJoin(ClientConnection connection, ServerPlayerEntity player, CallbackInfo ci){
         if (limbo != null){
-            limbo.onPlayerConnect(player, connection);
+            limbo.onPlayerConnect(player, connection, true);
             ci.cancel();
         }
     }

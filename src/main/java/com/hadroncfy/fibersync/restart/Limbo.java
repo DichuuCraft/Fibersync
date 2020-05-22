@@ -6,7 +6,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
-import com.hadroncfy.fibersync.util.copy.FileCopyProgressListener;
+import com.hadroncfy.fibersync.mixin.ContainerAccessor;
+import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +15,7 @@ import org.apache.logging.log4j.Logger;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
@@ -22,9 +24,9 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.world.level.LevelGeneratorType;
 
 public class Limbo implements Runnable {
-    private static final int SPAWN_RADIUS = 11;
     private static final Logger LOGGER = LogManager.getLogger();
     private final List<AwaitingPlayer> players = new ArrayList<>();
     private volatile boolean running = false;
@@ -40,7 +42,7 @@ public class Limbo implements Runnable {
         running = true;
         for (ServerPlayerEntity player : new ArrayList<>(server.getPlayerManager().getPlayerList())) {
             server.getPlayerManager().remove(player);
-            onPlayerConnect(player, player.networkHandler.connection);
+            onPlayerConnect(player, player.networkHandler.connection, false);
         }
         ((IPlayerManager)server.getPlayerManager()).setLimbo(this);
         ticker.start();
@@ -50,15 +52,18 @@ public class Limbo implements Runnable {
         return rollBackProgressListener;
     }
 
-    public FileCopyProgressListener getFileCopyListener(){
+    public FileOperationProgressListener getFileCopyListener(){
         return rollBackProgressListener;
     }
 
-    public void onPlayerConnect(ServerPlayerEntity player, ClientConnection connection){
+    public void onPlayerConnect(ServerPlayerEntity player, ClientConnection connection, boolean sendJoin){
         AwaitingPlayer p = new AwaitingPlayer(this, player, connection);
         
-        rollBackProgressListener.onPlayerConnected(p);
+        if (sendJoin){
+            connection.send(new GameJoinS2CPacket(player.getEntityId(), player.interactionManager.getGameMode(), false, DimensionType.OVERWORLD, 20, LevelGeneratorType.DEFAULT, 10, true));
+        }
         connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0));
+        rollBackProgressListener.onPlayerConnected(p);
         
         LOGGER.info("Player {} joined limbo", player.getGameProfile().getName());
         addPlayer(p);
@@ -91,8 +96,11 @@ public class Limbo implements Runnable {
             // be the instance of an inherited class of ServerPlayerEntity, such as
             // carpet.patches.EntityPlayerMPFake, or
             // com.hadroncfy.sreplay.recording.Photographer.
-            player.getEntity().setWorld(dummy); // avoid NullPointException when loading player data
-            player.getEntity().removed = false;
+            final ServerPlayerEntity playerEntity = player.getEntity();
+            playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
+            playerEntity.removed = false;
+            ((ContainerAccessor)playerEntity.container).getListeners().clear(); // avoid inventory desync
+
             playerManager.onPlayerConnect(player.getConnection(), player.getEntity());
         }
         pm.setShouldRefreshScreen(false);

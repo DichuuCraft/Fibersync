@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 import com.hadroncfy.fibersync.util.FileUtil;
 
@@ -27,13 +26,6 @@ import org.apache.logging.log4j.Logger;
 
 public class FileCopier {
     private static final Logger LOGGER = LogManager.getLogger("File Copy");
-
-    private synchronized void trymkdirs(Path file) {
-        File f = file.getParent().toFile();
-        if (!f.exists()) {
-            f.mkdirs();
-        }
-    }
 
     private static boolean checkSum(Path f1, Path f2) throws IOException, NoSuchAlgorithmException {
         final byte[] b1 = FileUtil.checkSum(f1), b2 = FileUtil.checkSum(f2);
@@ -45,7 +37,7 @@ public class FileCopier {
         return true;
     }
 
-    private static void deleteFileTree(Path f) throws IOException {
+    public static void deleteFileTree(Path f) throws IOException {
         Files.walkFileTree(f, new FileVisitor<Path>() {
 
             @Override
@@ -72,7 +64,7 @@ public class FileCopier {
         });
     }
 
-    public static void copy(Path src, Path dest, FileCopyProgressListener listener) throws IOException,
+    public static void copy(Path src, Path dest, FileOperationProgressListener listener) throws IOException,
             NoSuchAlgorithmException {
         final List<Path> srcFiles = new ArrayList<>();
         final List<Path> destFiles = new ArrayList<>();
@@ -105,7 +97,7 @@ public class FileCopier {
                         deleteFileTree(dest1);
                     }
                     else {
-                        listener.onFileCopied(src1);
+                        listener.onFileDone(src1);
                         continue;
                     }
                 }
@@ -114,23 +106,23 @@ public class FileCopier {
                         Files.delete(dest1);
                     }
                     else if (checkSum(src1, dest1)){
-                        LOGGER.info("Skipping non-modified file {}", src1.toString());
-                        listener.onFileCopied(src1);
+                        LOGGER.debug("Skipping non-modified file {}", src1.toString());
+                        listener.onFileDone(src1);
                         continue;
                     }
                 }
             }
 
             Files.copy(src1, dest1, StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.info("Copied file(or dir) {} to {}", src1.toString(), dest1.toString());
+            LOGGER.debug("Copied file(or dir) {} to {}", src1.toString(), dest1.toString());
 
-            listener.onFileCopied(src1);
+            listener.onFileDone(src1);
         }
 
         for (Path dest1: destFiles){
             if (!srcFileSet.contains(dest1)){
                 dest.resolve(dest1).toFile().delete();
-                LOGGER.info("deleted redundant file {}", dest1.toString());
+                LOGGER.debug("deleted redundant file {}", dest1.toString());
             }
         }
         listener.done();

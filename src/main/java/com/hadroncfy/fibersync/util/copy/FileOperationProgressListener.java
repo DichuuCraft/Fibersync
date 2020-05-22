@@ -2,8 +2,8 @@ package com.hadroncfy.fibersync.util.copy;
 
 import java.nio.file.Path;
 
-public interface FileCopyProgressListener {
+public interface FileOperationProgressListener {
     void start(int fileCount);
-    void onFileCopied(Path file);
+    void onFileDone(Path file);
     void done();
 }

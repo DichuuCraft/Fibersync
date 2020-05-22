@@ -39,5 +39,10 @@ public class Formats {
     failedToCopyLevelFiles = red("[Fibersync] 复制存档文件失败：$1"),
     countDownTitle = new LiteralText("准备回档：$1"),
     rollbackAborted = new LiteralText("[Fibersync] $1：已取消回档"),
-    nothingToAbort = red("[Fibersync] 无可取消的操作");
+    nothingToAbort = red("[Fibersync] 无可取消的操作"),
+    reloadedConfig = new LiteralText("[Fibersync] 已加载配置"),
+    failedToLoadConfig = red("[Fibersync] 加载配置失败：$1"),
+    backupCountFull = red("[Fibersync] 已超出最大备份数"),
+    deletedBackup = new LiteralText("[Fibersync] $1：已删除备份$2"),
+    failedToDeletedBackup = red("[Fibersync] $1：删除备份$2失败：$3");
 }

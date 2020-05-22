@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.hadroncfy.fibersync.util.copy.FileCopyProgressListener;
+import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 import net.minecraft.entity.boss.ServerBossBar;
 import net.minecraft.entity.boss.BossBar.Color;
@@ -14,7 +14,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 
-public class FileCopyProgressBar implements FileCopyProgressListener {
+public class FileCopyProgressBar implements FileOperationProgressListener {
     private int count, copied = 0;
     private final MinecraftServer server;
     private final ServerBossBar progressBar = new ServerBossBar(getFormat().fileCopyBarTitle, Color.GREEN, Style.PROGRESS);
@@ -24,6 +24,7 @@ public class FileCopyProgressBar implements FileCopyProgressListener {
         for (ServerPlayerEntity player: server.getPlayerManager().getPlayerList()){
             progressBar.addPlayer(player);
         }
+        progressBar.setPercent(0);
     }
 
     @Override
@@ -34,7 +35,7 @@ public class FileCopyProgressBar implements FileCopyProgressListener {
     }
 
     @Override
-    public void onFileCopied(Path file) {
+    public void onFileDone(Path file) {
         progressBar.setPercent((float)copied++ / (float)count);
     }
 

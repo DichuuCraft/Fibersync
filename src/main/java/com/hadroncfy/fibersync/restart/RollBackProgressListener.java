@@ -2,7 +2,7 @@ package com.hadroncfy.fibersync.restart;
 
 import java.nio.file.Path;
 
-import com.hadroncfy.fibersync.util.copy.FileCopyProgressListener;
+import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 import net.minecraft.entity.boss.BossBar;
 import net.minecraft.entity.boss.ServerBossBar;
@@ -16,7 +16,7 @@ import net.minecraft.world.chunk.ChunkStatus;
 
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 
-public class RollBackProgressListener implements WorldGenerationProgressListener, FileCopyProgressListener {
+public class RollBackProgressListener implements WorldGenerationProgressListener, FileOperationProgressListener {
     private final Limbo limbo;
     private int fileCount, copied, loadedChunk;
     private static final int SPAWN_CHUNK_COUNT = 21*21;// sbmojang, the spawn radius is hard-coded...
@@ -42,7 +42,7 @@ public class RollBackProgressListener implements WorldGenerationProgressListener
     }
 
     @Override
-    public void onFileCopied(Path file) {
+    public void onFileDone(Path file) {
         fileCopyProgressBar.setPercent((float)copied++ / (float)fileCount);
         limbo.sendToAll(new BossBarS2CPacket(Type.UPDATE_PCT, fileCopyProgressBar));
     }

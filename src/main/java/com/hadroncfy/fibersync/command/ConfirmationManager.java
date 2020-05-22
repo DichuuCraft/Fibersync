@@ -45,6 +45,9 @@ public class ConfirmationManager {
                 confirms.remove(label);
                 return true;
             }
+            else {
+                h.sender.sendError(getFormat().invalidConfirmationCode);
+            }
         }
         return false;
     }
