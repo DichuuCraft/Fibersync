@@ -43,11 +43,11 @@ public class ConfirmationManager {
                 h.t.cancel();
                 h.handler.onConfirm(h.sender);
                 confirms.remove(label);
-                return true;
             }
             else {
                 h.sender.sendError(getFormat().invalidConfirmationCode);
             }
+            return true;
         }
         return false;
     }

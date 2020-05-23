@@ -89,21 +89,28 @@ public class Limbo implements Runnable {
         rollBackProgressListener.end();
 
         pm.setLimbo(null);
-        pm.setShouldRefreshScreen(true);
-        for (AwaitingPlayer player : players) {
-            // we can't just create a new ServerPlayerEntity here since the original player
-            // may
-            // be the instance of an inherited class of ServerPlayerEntity, such as
-            // carpet.patches.EntityPlayerMPFake, or
-            // com.hadroncfy.sreplay.recording.Photographer.
-            final ServerPlayerEntity playerEntity = player.getEntity();
-            playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
-            playerEntity.removed = false;
-            ((ContainerAccessor)playerEntity.container).getListeners().clear(); // avoid inventory desync
 
-            playerManager.onPlayerConnect(player.getConnection(), player.getEntity());
+        if (server.isSinglePlayer() && players.size() == 0){
+            LOGGER.info("Stopping server as the server has no players");
+            // server.stop(true);
         }
-        pm.setShouldRefreshScreen(false);
+        else {
+            pm.setShouldRefreshScreen(true);
+            for (AwaitingPlayer player : players) {
+                // we can't just create a new ServerPlayerEntity here since the original player
+                // may
+                // be the instance of an inherited class of ServerPlayerEntity, such as
+                // carpet.patches.EntityPlayerMPFake, or
+                // com.hadroncfy.sreplay.recording.Photographer.
+                final ServerPlayerEntity playerEntity = player.getEntity();
+                playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
+                playerEntity.removed = false;
+                ((ContainerAccessor)playerEntity.container).getListeners().clear(); // avoid inventory desync
+    
+                playerManager.onPlayerConnect(player.getConnection(), player.getEntity());
+            }
+            pm.setShouldRefreshScreen(false);
+        }
         players.clear();
     }
 

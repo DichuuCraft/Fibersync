@@ -9,7 +9,8 @@
       "LevelStorageAccessor",
       "WorldSaveHandlerAccessor",
       "MixinPlayerManager",
-      "ContainerAccessor"
+      "ContainerAccessor",
+      "MixinServerPlayNetworkHandler"
     ],
     "client": [
     ],

@@ -23,7 +23,6 @@ import net.fabricmc.api.ModInitializer;
 public class FibersyncMod implements ModInitializer {
     private static final Logger LOGGER = LogManager.getLogger();
     private static Config config;
-    public static final BackupCommand BACKUP_COMMAND = new BackupCommand(() -> config);
 
     public static void loadConfig() throws IOException, JsonParseException {
         File c = new File("config", "fibersync.json");

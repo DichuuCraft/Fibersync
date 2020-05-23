@@ -1,6 +1,6 @@
 package com.hadroncfy.fibersync.mixin;
 
-import com.hadroncfy.fibersync.FibersyncMod;
+import com.hadroncfy.fibersync.command.BackupCommand;
 import com.mojang.brigadier.CommandDispatcher;
 
 import org.spongepowered.asm.mixin.Final;
@@ -21,6 +21,6 @@ public class MixinCommandManager {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onRegister(boolean boolean_1, CallbackInfo ci) {
-        FibersyncMod.BACKUP_COMMAND.register(dispatcher);
+        BackupCommand.register(dispatcher);
     }
 }

@@ -8,7 +8,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -40,12 +39,15 @@ public class BackupFactory {
         }
     }
 
-    public Collection<BackupEntry> getBackups(String levelName){
+    public List<BackupEntry> getBackups(String levelName){
         List<BackupEntry> ret = new ArrayList<>();
-        for (String name: dir.get().resolve(levelName).toFile().list()){
-            BackupEntry entry = getEntry(levelName, name);
-            if (entry != null && entry.exists()){
-                ret.add(entry);
+        final String[] names = dir.get().resolve(levelName).toFile().list();
+        if (names != null){
+            for (String name: names){
+                BackupEntry entry = getEntry(levelName, name);
+                if (entry != null && entry.exists()){
+                    ret.add(entry);
+                }
             }
         }
         return ret;

@@ -5,13 +5,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 
 import com.hadroncfy.fibersync.util.copy.FileCopier;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
-public class BackupEntry {
+public class BackupEntry implements Comparable<BackupEntry> {
     private final BackupInfo info;
     private final Path dir;
 
@@ -26,7 +27,7 @@ public class BackupEntry {
 
     public void writeInfo() throws IOException {
         File infoFile = dir.resolve("info.json").toFile();
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile))) {
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile), StandardCharsets.UTF_8)) {
             writer.write(BackupInfo.GSON.toJson(info));
         }
     }
@@ -53,7 +54,6 @@ public class BackupEntry {
         }
 
         writeInfo();
-        // FileUtil.rsync(FibersyncMod.getConfig().rsyncPath, worldDir, backupDir);
         FileCopier.copy(worldDir, backupDir, listener);
     }
 
@@ -61,7 +61,17 @@ public class BackupEntry {
         FileCopier.deleteFileTree(dir);
     }
 
+    public void overwriteTo(BackupEntry entry){
+        File f1 = entry.dir.toFile();
+        f1.renameTo(entry.dir.resolveSibling(info.name).toFile());
+    }
+
     public void back(Path worldDir, FileOperationProgressListener listener) throws NoSuchAlgorithmException, IOException {
         FileCopier.copy(dir.resolve("world"), worldDir, listener);
+    }
+
+    @Override
+    public int compareTo(BackupEntry o) {
+        return o.info.date.compareTo(info.date);
     }
 }

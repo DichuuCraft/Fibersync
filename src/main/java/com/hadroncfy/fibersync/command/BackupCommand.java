@@ -5,7 +5,11 @@ import static net.minecraft.server.command.CommandManager.literal;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 
@@ -15,8 +19,6 @@ import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.backup.BackupFactory;
 import com.hadroncfy.fibersync.backup.BackupInfo;
-import com.hadroncfy.fibersync.config.Config;
-import com.hadroncfy.fibersync.config.Formats;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.mixin.LevelStorageAccessor;
 import com.mojang.brigadier.CommandDispatcher;
@@ -25,6 +27,8 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,48 +44,64 @@ import static net.minecraft.server.command.CommandSource.suggestMatching;
 
 import static com.hadroncfy.fibersync.config.TextRenderer.render;
 
-public class BackupCommand implements Executor, Supplier<Path> {
+import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
+import static com.hadroncfy.fibersync.FibersyncMod.getConfig;
+
+public class BackupCommand {
     private static final Logger LOGGER = LogManager.getLogger();
-    private final BackupFactory bf;
-    private final ConfirmationManager cm;
-    private final Supplier<Config> cProvider;
-    // private Thread task = null;
-    // private volatile boolean hasTask = false;
-    private CountDownTask countDownTask;
-    private final TaskManager taskmgr = new TaskManager();
+    public static final String NAME = "fs";
 
-    @Override
-    public Path get() {
-        return new File(cProvider.get().backupDir).toPath();
-    }
-
-    public BackupCommand(Supplier<Config> provider) {
-        cProvider = provider;
-        cm = new ConfirmationManager(provider, 20000, 1000);
-        this.bf = new BackupFactory(this);
-    }
-
-    private Formats getFormat() {
-        return cProvider.get().formats;
-    }
-
-    public void register(CommandDispatcher<ServerCommandSource> cd) {
-        final LiteralArgumentBuilder<ServerCommandSource> b = literal("fs").then(literal("list").executes(this::list))
-                .then(literal("create").then(argument("name", StringArgumentType.word())
-                        .then(argument("description", MessageArgumentType.message()).executes(this::create))))
-                .then(literal("back").then(argument("name", StringArgumentType.word()).suggests((src,
-                        sb) -> suggestMatching(bf.getBackups(src.getSource().getMinecraftServer().getLevelName())
-                                .stream().map(e -> e.getInfo().name), sb))
-                        .executes(this::back)))
-                .then(literal("confirm").then(argument("code", IntegerArgumentType.integer()).executes(this::confirm)))
-                .then(literal("cancel").executes(this::cancel)).then(literal("abort").executes(this::abort))
-                .then(literal("reload").executes(this::reload))
-                .then(literal("delete")
-                    .then(argument("name", StringArgumentType.word()).executes(this::delete)));
+    public static void register(CommandDispatcher<ServerCommandSource> cd) {
+        final LiteralArgumentBuilder<ServerCommandSource> b = literal(NAME)
+            .then(literal("list").executes(BackupCommand::list))
+            .then(literal("create")
+                .then(argument("name", StringArgumentType.word())
+                    .suggests(BackupCommand::suggestBackups)
+                    .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create))))
+            .then(literal("make").executes(BackupCommand::create)
+                .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create)))
+            .then(literal("back")
+                .then(argument("name", StringArgumentType.word())
+                .suggests(BackupCommand::suggestBackups)
+                .executes(BackupCommand::back)))
+            .then(literal("confirm").then(argument("code", IntegerArgumentType.integer()).executes(BackupCommand::confirm)))
+            .then(literal("cancel").executes(BackupCommand::cancel))
+            .then(literal("reload").executes(BackupCommand::reload))
+            .then(literal("delete")
+                .then(argument("name", StringArgumentType.word())
+                    .suggests(BackupCommand::suggestBackups)
+                    .executes(BackupCommand::delete)))
+            .then(literal("lock")
+                .requires(BackupCommand::canLock)
+                .then(argument("name", StringArgumentType.word())
+                    .suggests(BackupCommand::suggestUnlockedBackups)
+                    .executes(ctx -> setLocked(ctx, true))))
+            .then(literal("unlock")
+                .requires(BackupCommand::canLock)
+                .then(argument("name", StringArgumentType.word())
+                    .suggests(BackupCommand::suggestLockedBackups)
+                    .executes(ctx -> setLocked(ctx, false))));
         cd.register(b);
     }
 
-    private int reload(CommandContext<ServerCommandSource> ctx) {
+    private static CompletableFuture<Suggestions> suggestBackups(final CommandContext<ServerCommandSource> context, final SuggestionsBuilder builder){
+        final BackupFactory bf = ((IServer)context.getSource().getMinecraftServer()).getContext().getBackupFactory();
+        return suggestMatching(bf.getBackups(context.getSource().getMinecraftServer().getLevelName()).stream().map(e -> e.getInfo().name), builder);
+    }
+    private static CompletableFuture<Suggestions> suggestLockedBackups(final CommandContext<ServerCommandSource> context, final SuggestionsBuilder builder){
+        final BackupFactory bf = ((IServer)context.getSource().getMinecraftServer()).getContext().getBackupFactory();
+        return suggestMatching(bf.getBackups(context.getSource().getMinecraftServer().getLevelName()).stream().filter(p -> p.getInfo().locked).map(e -> e.getInfo().name), builder);
+    }
+    private static CompletableFuture<Suggestions> suggestUnlockedBackups(final CommandContext<ServerCommandSource> context, final SuggestionsBuilder builder){
+        final BackupFactory bf = ((IServer)context.getSource().getMinecraftServer()).getContext().getBackupFactory();
+        return suggestMatching(bf.getBackups(context.getSource().getMinecraftServer().getLevelName()).stream().filter(p -> !p.getInfo().locked).map(e -> e.getInfo().name), builder);
+    }
+
+    private static boolean canLock(ServerCommandSource src){
+        return src.hasPermissionLevel(1);
+    }
+
+    private static int reload(CommandContext<ServerCommandSource> ctx) {
         final ServerCommandSource src = ctx.getSource();
         try {
             FibersyncMod.loadConfig();
@@ -93,44 +113,33 @@ public class BackupCommand implements Executor, Supplier<Path> {
         }
     }
 
-    private int abort(CommandContext<ServerCommandSource> ctx) {
+    private static int confirm(CommandContext<ServerCommandSource> ctx) {
+        int code = IntegerArgumentType.getInteger(ctx, "code");
+        final ConfirmationManager cm = ((IServer)ctx.getSource().getMinecraftServer()).getContext().getConfirmationManager();
+        if (!cm.confirm(ctx.getSource().getName(), code)){
+            ctx.getSource().sendError(getFormat().nothingToConfirm);
+        }
+        return 0;
+    }
+
+    private static int cancel(CommandContext<ServerCommandSource> ctx) {
         final ServerCommandSource src = ctx.getSource();
-        if (countDownTask != null) {
-            countDownTask.cancel();
+        final BackupCommandContext cctx = ((IServer)ctx.getSource().getMinecraftServer()).getContext();
+        if (cctx.countDownTask != null) {
+            cctx.countDownTask.cancel();
             src.getMinecraftServer().getPlayerManager()
                     .broadcastChatMessage(render(getFormat().rollbackAborted, src.getName()), false);
             return 0;
         } else {
-            src.sendError(getFormat().nothingToAbort);
-            return 1;
+            if (!cctx.getConfirmationManager().cancel(ctx.getSource().getName())){
+                src.sendError(getFormat().nothingToCancel);
+                return 1;
+            }
+            return 0;
         }
     }
 
-    private int confirm(CommandContext<ServerCommandSource> ctx) {
-        int code = IntegerArgumentType.getInteger(ctx, "code");
-        cm.confirm(ctx.getSource().getName(), code);
-        return 1;
-    }
-
-    private int cancel(CommandContext<ServerCommandSource> ctx) {
-        cm.cancel(ctx.getSource().getName());
-        return 1;
-    }
-
-    private boolean tryBeginTask(ServerCommandSource src) {
-        if (taskmgr.beginTask()) {
-            return true;
-        } else {
-            src.sendError(getFormat().otherTaskRunning);
-            return false;
-        }
-    }
-
-    private void endTask() {
-        taskmgr.endTask();
-    }
-
-    private UUID getSourceUUID(CommandContext<ServerCommandSource> ctx) {
+    private static UUID getSourceUUID(CommandContext<ServerCommandSource> ctx) {
         try {
             return ctx.getSource().getPlayer().getUuid();
         } catch (CommandSyntaxException e) {
@@ -156,17 +165,22 @@ public class BackupCommand implements Executor, Supplier<Path> {
         return ((LevelStorageAccessor) server.getLevelStorage()).getSavesDir().resolve(server.getLevelName());
     }
 
-    private synchronized int delete(CommandContext<ServerCommandSource> ctx) {
+    private static synchronized int delete(CommandContext<ServerCommandSource> ctx) {
         final String name = StringArgumentType.getString(ctx, "name");
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
-        final BackupEntry b = bf.getEntry(server.getLevelName(), name);
+        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final BackupEntry b = cctx.getBackupFactory().getEntry(server.getLevelName(), name);
         if (b == null || !b.exists()) {
             src.sendError(getFormat().backupNotExist);
             return 1;
         }
-        cm.submit(src.getName(), src, s -> {
-            if (tryBeginTask(src)) {
+        if (b.getInfo().locked){
+            src.sendError(getFormat().backupLocked);
+            return 1;
+        }
+        cctx.getConfirmationManager().submit(src.getName(), src, s -> {
+            if (cctx.tryBeginTask(src)) {
                 try {
                     b.delete();
                     server.getPlayerManager().broadcastChatMessage(render(getFormat().deletedBackup, src.getName(), b.getInfo().name), false);
@@ -175,57 +189,151 @@ public class BackupCommand implements Executor, Supplier<Path> {
                     server.getPlayerManager().broadcastChatMessage(render(getFormat().failedToDeletedBackup, src.getName(), b.getInfo().name, e.toString()), false);
                 }
                 finally {
-                    endTask();
+                    cctx.endTask();
                 }
             }
         });
         return 0;
     }
 
-    private synchronized int create(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
-        final String name = StringArgumentType.getString(ctx, "name"),
-                description = MessageArgumentType.getMessage(ctx, "description").asString();
+    private static synchronized int setLocked(CommandContext<ServerCommandSource> ctx, boolean locked){
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
-        final BackupEntry b = bf.create(server.getLevelName(), name, description, getSourceUUID(ctx));
-        final String senderName = src.getName();
-        final Runnable btask = () -> {
-            if (tryBeginTask(src)){
-                final boolean autosave = getAutosave(server);
-                setAutosave(server, false);
-                server.save(false, true, true);
-                server.getPlayerManager().saveAllPlayerData();
-                new Thread(() -> {
-                    final FileCopyProgressBar progressBar = new FileCopyProgressBar(server);
-                    try {
-                        server.getPlayerManager().sendToAll(render(getFormat().creatingBackup, senderName, name));
-                        Path worldDir = getWorldDir(server);
-                        LOGGER.info("world dir: " + worldDir.toString());
+        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final BackupEntry entry = cctx.getBackupFactory().getEntry(server.getLevelName(), StringArgumentType.getString(ctx, "name"));
+        if (entry == null){
+            src.sendError(getFormat().backupNotExist);
+            return 1;
+        }
+        if (cctx.tryBeginTask(src)){
+            try {
+                entry.getInfo().locked = locked;
+                entry.writeInfo();
+                server.getPlayerManager().broadcastChatMessage(render(locked ? getFormat().lockedBackup : getFormat().unlockedBackup, src.getName(), entry.getInfo().name), false);
+            } catch (Exception e) {
+                e.printStackTrace();
+                server.getPlayerManager().broadcastChatMessage(render(getFormat().failedToWriteInfo, src.getName(), e.toString()), false);
+            }
+            finally {
+                cctx.endTask();
+            }
+        }
+        return 0;
+    }
 
-                        b.doBackup(worldDir, progressBar);
-                        server.getPlayerManager().sendToAll(render(getFormat().backupComplete, senderName, name));
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        server.getPlayerManager().sendToAll(render(getFormat().backupFailed, senderName, e.toString()));
-                        progressBar.done();
-                    }
-                    finally {
-                        setAutosave(server, autosave);
-                        endTask();
-                    }
-                }).start();
+    private static CompletableFuture<Void> doBackup(MinecraftServer server, ServerCommandSource src, BackupEntry entry){
+        final boolean autosave = getAutosave(server);
+        setAutosave(server, false);
+        server.save(false, true, true);
+        server.getPlayerManager().saveAllPlayerData();
+        return CompletableFuture.runAsync(() -> {
+            final FileCopyProgressBar progressBar = new FileCopyProgressBar(server);
+            try {
+                Path worldDir = getWorldDir(server);
+                LOGGER.info("world dir: " + worldDir.toString());
+    
+                entry.doBackup(worldDir, progressBar);
+            } catch (Exception e) {
+                e.printStackTrace();
+                progressBar.done();
+                throw new CompletionException(e);
+            }
+            finally {
+                setAutosave(server, autosave);
+            }
+        });
+    }
+
+    private static String getEmptyBackupName(String prefix, List<BackupEntry> entries){
+        String name;
+        int i = 1;
+        out:
+        while (true){
+            name = prefix + "-" + i++;
+            for (BackupEntry e: entries){
+                if (e.getInfo().name.equals(name)){
+                    continue out;
+                }
+            }
+            return name;
+        }
+    }
+
+    private static BackupEntry getOldestUnlockedEntry(List<BackupEntry> entries){
+        Collections.sort(entries);
+        for (int i = entries.size() - 1; i >= 0; i--){
+            BackupEntry entry = entries.get(i);
+            if (!entry.getInfo().locked){
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    private static synchronized int create(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+        // final String name = StringArgumentType.getString(ctx, "name"),
+        //         description = MessageArgumentType.getMessage(ctx, "description").asString();
+        
+        final ServerCommandSource src = ctx.getSource();
+        final MinecraftServer server = src.getMinecraftServer();
+        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final List<BackupEntry> entries = cctx.getBackupFactory().getBackups(server.getLevelName());
+        final int maxBackups = getConfig().maxBackupCount;
+        
+        final String description = tryGetArg(() -> MessageArgumentType.getMessage(ctx, "description").asString(), () -> "");
+        BackupEntry b, b2 = null;
+        try {
+            final String name = StringArgumentType.getString(ctx, "name");
+            b = cctx.getBackupFactory().create(server.getLevelName(), name, description, getSourceUUID(ctx));
+            if (b.exists()){
+                b2 = b;
+            }
+            else if (maxBackups != -1 && entries.size() >= maxBackups){
+                src.sendError(getFormat().backupCountFull);
+                return 0;
+            }
+        }
+        catch(IllegalArgumentException e){
+            if (maxBackups != -1 && entries.size() >= maxBackups){
+                b2 = getOldestUnlockedEntry(entries);
+                if (b2 == null){
+                    src.sendError(getFormat().allBackupsLocked);
+                    return 1;
+                }
+            }
+            b = cctx.getBackupFactory().create(server.getLevelName(), getEmptyBackupName("backup", entries), description, getSourceUUID(ctx));
+        }
+        final BackupEntry selected = b, overwrite = b2;
+        
+        final String senderName = src.getName();
+        final String name = selected.getInfo().name;
+        final Runnable btask = () -> {
+            if (cctx.tryBeginTask(src)){
+                server.getPlayerManager().broadcastChatMessage(render(getFormat().creatingBackup, senderName, name), false);
+                if (overwrite != null && overwrite != selected){
+                    selected.overwriteTo(overwrite);
+                }
+                doBackup(server, src, selected).thenRun(() -> {
+                    server.getPlayerManager().broadcastChatMessage(render(getFormat().backupComplete, senderName, name), false);
+                    cctx.endTask();
+                }).exceptionally(e -> {
+                    server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, senderName, e.toString()), false);
+                    cctx.endTask();
+                    return null;
+                });
             }
         };
-        final int maxBackups = cProvider.get().maxBackupCount;
-        if (maxBackups != -1 && bf.getBackups(server.getLevelName()).size() >= maxBackups){
-            src.sendError(getFormat().backupCountFull);
-            return 0;
-        }
-        if (b.exists()) {
-            src.sendFeedback(render(getFormat().overwriteAlert, name), false);
-            cm.submit(src.getName(), src, s -> {
-                btask.run();
-            });
+        if (overwrite != null) {
+            if (!overwrite.getInfo().locked){
+                src.sendFeedback(render(getFormat().overwriteAlert, overwrite.getInfo().name), false);
+                cctx.getConfirmationManager().submit(src.getName(), src, s -> {
+                    btask.run();
+                });
+            }
+            else {
+                src.sendError(getFormat().overwriteFailedLocked);
+                return 0;
+            }
         }
         else {
             btask.run();
@@ -233,55 +341,89 @@ public class BackupCommand implements Executor, Supplier<Path> {
         return 1;
     }
 
-    private synchronized int back(CommandContext<ServerCommandSource> ctx){
+    private static synchronized int back(CommandContext<ServerCommandSource> ctx){
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
-        final BackupEntry entry = bf.getEntry(server.getLevelName(), StringArgumentType.getString(ctx, "name"));
+        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final BackupEntry entry = cctx.getBackupFactory().getEntry(server.getLevelName(), StringArgumentType.getString(ctx, "name"));
         if (entry == null || !entry.exists()){
             src.sendError(getFormat().backupNotExist);
             return 0;
         }
-        cm.submit(src.getName(), src, (s) -> {
-            if (tryBeginTask(src)){
+
+        final int maxBackups = getConfig().maxBackupCount;
+        final BackupEntry currentWorld = cctx.getBackupFactory().create(server.getLevelName(), getConfig().oldWorldName, getConfig().oldWorldDescription, getSourceUUID(ctx));
+        currentWorld.getInfo().locked = true;
+        final List<BackupEntry> entries = cctx.getBackupFactory().getBackups(server.getLevelName());
+        if (!currentWorld.exists() && maxBackups != -1 && entries.size() >= maxBackups){
+            src.sendError(getFormat().backupCountFullWhenRollback);
+            return 0;
+        }
+
+        cctx.getConfirmationManager().submit(src.getName(), src, (s) -> {
+            if (cctx.tryBeginTask(src)){
                 server.getPlayerManager().broadcastChatMessage(render(getFormat().rollbackConfirmedAlert, src.getName(), entry.getInfo().name), true);
-                countDownTask = new CountDownTask(cProvider.get().defaultCountDown);
-                countDownTask.run(i -> {
-                    Text txt = render(getFormat().countDownTitle, Integer.toString(i));
-                    server.getPlayerManager().sendToAll(new TitleS2CPacket(TitleS2CPacket.Action.ACTIONBAR, txt, 10, 10, -1));
-                }).thenAccept(b -> {
-                    countDownTask = null;
-                    if (b){
-                        server.getPlayerManager().broadcastChatMessage(getFormat().rollbackStarted, true);
-                        ((IServer) server).reloadAll(entry, () -> {
-                            server.getPlayerManager().broadcastChatMessage(getFormat().rollbackFinished, true);
-                            endTask();
-                        });
-                    }
-                    else {
-                        endTask();
-                    }
+                
+                server.getPlayerManager().broadcastChatMessage(render(getFormat().creatingBackup, src.getName(), currentWorld.getInfo().name), false);
+
+                doBackup(server, src, currentWorld).thenRun(() -> {
+                    server.getPlayerManager().sendToAll(render(getFormat().backupComplete, src.getName(), currentWorld.getInfo().name));
+                    
+                    cctx.countDownTask = new CountDownTask(getConfig().defaultCountDown);
+                    cctx.countDownTask.run(i -> {
+                        Text txt = render(getFormat().countDownTitle, Integer.toString(i));
+                        server.getPlayerManager().sendToAll(new TitleS2CPacket(TitleS2CPacket.Action.ACTIONBAR, txt, 10, 10, -1));
+                    }).thenAccept(b -> {
+                        cctx.countDownTask = null;
+                        if (b){
+                            server.getPlayerManager().broadcastChatMessage(getFormat().rollbackStarted, true);
+                            ((IServer) server).reloadAll(entry, () -> {
+                                server.getPlayerManager().broadcastChatMessage(getFormat().rollbackFinished, true);
+                                cctx.endTask();
+                            });
+                        }
+                        else {
+                            cctx.endTask();
+                        }
+                    });
+                }).exceptionally(e -> {
+                    server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, src.getName(), e.toString()), false);
+                    cctx.endTask();
+                    return null;
                 });
             }
         });
         return 1;
     }
 
-    private int list(CommandContext<ServerCommandSource> ctx){
+    private static int list(CommandContext<ServerCommandSource> ctx){
         final ServerCommandSource src = ctx.getSource();
-        for (BackupEntry entry: bf.getBackups(src.getMinecraftServer().getLevelName())){
+        final BackupCommandContext cctx = ((IServer)src.getMinecraftServer()).getContext();
+        final List<BackupEntry> entries = cctx.getBackupFactory().getBackups(src.getMinecraftServer().getLevelName());
+        Collections.sort(entries);
+        src.sendFeedback(getFormat().backupListTitle, false);
+        for (BackupEntry entry: entries){
             src.sendFeedback(render(
-                getFormat().backupListItem,
+                entry.getInfo().locked ? getFormat().lockedBackupListItem : getFormat().backupListItem,
                 entry.getInfo().name,
                 entry.getInfo().description,
-                cProvider.get().dateFormat.format(entry.getInfo().date)
+                getConfig().dateFormat.format(entry.getInfo().date)
             ), false);
         }
         return 1;
     }
 
-    @Override
-    public void execute(Runnable command) {
-        // TODO Auto-generated method stub
+    @FunctionalInterface
+    interface SupplierWithSyntaxException<T> {
+        T get() throws IllegalArgumentException, CommandSyntaxException;
+    }
 
+    private static <T> T tryGetArg(SupplierWithSyntaxException<T> arg, Supplier<T> def){
+        try {
+            return arg.get();
+        }
+        catch(IllegalArgumentException | CommandSyntaxException e){
+            return def.get();
+        }
     }
 }

@@ -10,6 +10,7 @@ import com.google.gson.JsonElement;
 import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.command.BackupCommand;
+import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.config.TextRenderer;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.restart.Limbo;
@@ -93,6 +94,11 @@ public abstract class MixinMinecraftServer implements IServer {
 
     @Shadow
     private int ticks;
+
+    @Shadow
+    private boolean running;
+
+    private BackupCommandContext commandContext = new BackupCommandContext();
 
     private void loadWorld(String name, String serverName, long seed, LevelGeneratorType generatorType,
             JsonElement generatorSettings, WorldGenerationProgressListener startRegionListener) {
@@ -190,5 +196,10 @@ public abstract class MixinMinecraftServer implements IServer {
         tickTask = task;
         tickTaskPeriod = period;
         tickBase = ticks;
+    }
+
+    @Override
+    public BackupCommandContext getContext() {
+        return commandContext;
     }
 }

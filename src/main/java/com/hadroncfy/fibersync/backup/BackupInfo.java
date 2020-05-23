@@ -15,6 +15,7 @@ public class BackupInfo {
     public String name;
     public Date date;
     public String description;
+    public boolean locked;
     public UUID creator;
 
     public void refresh(String description, UUID creator){
