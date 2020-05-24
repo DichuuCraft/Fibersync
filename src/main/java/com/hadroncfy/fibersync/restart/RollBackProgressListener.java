@@ -18,7 +18,8 @@ import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 
 public class RollBackProgressListener extends WorldGenerationProgressLogger implements FileOperationProgressListener {
     private final Limbo limbo;
-    private int fileCount, copied, loadedChunk;
+    private int loadedChunk;
+    private long totalSize, size;
     private static final int SPAWN_CHUNK_RADIUS = 11;// sbmojang, the spawn radius is hard-coded...
     private static final int SPAWN_CHUNK_COUNT = (2*SPAWN_CHUNK_RADIUS + 1) * (2*SPAWN_CHUNK_RADIUS + 1);
     private final BossBar fileCopyProgressBar = new ServerBossBar(getFormat().fileCopyBarTitle, Color.GREEN, Style.PROGRESS);
@@ -38,14 +39,15 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
     }
 
     @Override
-    public void start(int fileCount) {
-        this.fileCount = fileCount;
-        copied = 0;
+    public void start(long totalSize) {
+        this.totalSize = totalSize;
+        size = 0;
     }
 
     @Override
-    public void onFileDone(Path file) {
-        fileCopyProgressBar.setPercent((float)copied++ / (float)fileCount);
+    public void onFileDone(Path file, long size) {
+        this.size += size;
+        fileCopyProgressBar.setPercent((float)this.size / (float)totalSize);
         limbo.sendToAll(new BossBarS2CPacket(Type.UPDATE_PCT, fileCopyProgressBar));
     }
 

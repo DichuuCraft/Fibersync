@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 public class SimpleFileVisitor implements FileVisitor<Path> {
     private final Consumer<Path> consumer;
     private final boolean rev;
-
+    public long size = 0;
     
     public SimpleFileVisitor(Consumer<Path> p, boolean rev){
         consumer = p;
@@ -36,6 +36,7 @@ public class SimpleFileVisitor implements FileVisitor<Path> {
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
         consumer.accept(file);
+        size += file.toFile().length();
         return FileVisitResult.CONTINUE;
     }
 

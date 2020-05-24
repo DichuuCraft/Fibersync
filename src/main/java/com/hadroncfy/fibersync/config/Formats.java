@@ -57,6 +57,8 @@ public class Formats {
     rollbackFinished = new LiteralText("[Fibersync] 回档完成"),
     startRegionBarTitle = new LiteralText("生成出生点"),
     fileCopyBarTitle = new LiteralText("复制存档文件"),
+    creatingBackupTitle = new LiteralText("创建存档")
+        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN))),
     failedToCopyLevelFiles = red("[Fibersync] 复制存档文件失败：$1"),
     countDownTitle = new LiteralText("准备回档：$1"),
     rollbackAborted = new LiteralText("[Fibersync] $1：已取消回档"),
@@ -72,5 +74,9 @@ public class Formats {
     allBackupsLocked = red("[Fibersync] 存档数已满且找不到可覆盖的存档"),
     lockedBackup = new LiteralText("[Fibersync] $1：已锁定存档$2"),
     unlockedBackup = new LiteralText("[Fibersync] $1：已解锁存档$2"),
-    failedToWriteInfo = red("[Fibersync] $1：存档信息写入失败：$2");
+    failedToWriteInfo = red("[Fibersync] $1：存档信息写入失败：$2"),
+    deletingBackup = new LiteralText("[Fibersync] $1：正在删除存档$2"),
+    deletingBackupTitle = new LiteralText("删除存档")
+        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN))),
+    failedToRetrieveList = red("[Fibersync] 获取存档列表时出错：$1");
 }

@@ -58,8 +58,8 @@ public class BackupEntry implements Comparable<BackupEntry> {
         FileCopier.copy(worldDir, backupDir, listener);
     }
 
-    public void delete() throws IOException {
-        FileCopier.deleteFileTree(dir);
+    public void delete(FileOperationProgressListener listener) throws IOException {
+        FileCopier.deleteFileTree(dir, listener);
     }
 
     public void overwriteTo(BackupEntry entry){

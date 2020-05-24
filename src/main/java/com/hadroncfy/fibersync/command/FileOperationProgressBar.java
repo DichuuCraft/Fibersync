@@ -11,32 +11,31 @@ import net.minecraft.entity.boss.BossBar.Color;
 import net.minecraft.entity.boss.BossBar.Style;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 
-import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
+public class FileOperationProgressBar implements FileOperationProgressListener {
+    private long totalSize = 0, size = 0;
+    private final ServerBossBar progressBar;
 
-public class FileCopyProgressBar implements FileOperationProgressListener {
-    private int count = 0, copied = 0;
-    private final MinecraftServer server;
-    private final ServerBossBar progressBar = new ServerBossBar(getFormat().fileCopyBarTitle, Color.GREEN, Style.PROGRESS);
-
-    public FileCopyProgressBar(MinecraftServer server){
-        this.server = server;
+    public FileOperationProgressBar(MinecraftServer server, Text title){
+        progressBar = new ServerBossBar(title, Color.GREEN, Style.PROGRESS);
+        progressBar.setPercent(0);
         for (ServerPlayerEntity player: server.getPlayerManager().getPlayerList()){
             progressBar.addPlayer(player);
         }
+    }
+
+    @Override
+    public void start(long totalSize) {
+        this.totalSize = totalSize;
+        size = 0;
         progressBar.setPercent(0);
     }
 
     @Override
-    public void start(int fileCount) {
-        count = fileCount;
-        copied = 0;
-        progressBar.setPercent(0);
-    }
-
-    @Override
-    public void onFileDone(Path file) {
-        progressBar.setPercent((float)copied++ / (float)count);
+    public void onFileDone(Path file, long size) {
+        this.size += size;
+        progressBar.setPercent((float)this.size / (float)totalSize);
     }
 
     @Override

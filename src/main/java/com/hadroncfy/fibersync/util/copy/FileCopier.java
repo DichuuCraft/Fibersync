@@ -37,31 +37,25 @@ public class FileCopier {
         return true;
     }
 
-    public static void deleteFileTree(Path f) throws IOException {
-        Files.walkFileTree(f, new FileVisitor<Path>() {
+    public static void deleteFileTree(Path dir, FileOperationProgressListener listener) throws IOException {
+        final List<Path> files = new ArrayList<>();
+        SimpleFileVisitor visitor = new SimpleFileVisitor(f -> files.add(f), true);
 
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                Files.delete(dir);
-                return FileVisitResult.CONTINUE;
-            }
+        Files.walkFileTree(dir, visitor);
 
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                return FileVisitResult.CONTINUE;
+        if (listener != null){
+            listener.start(visitor.size);
+        }
+        for (Path p: files){
+            final File pf = p.toFile();
+            if (pf.isFile() && listener != null){
+                listener.onFileDone(p, pf.length());
             }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                Files.delete(file);
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                return FileVisitResult.CONTINUE;
-            }
-        });
+            Files.delete(p);
+        }
+        if (listener != null){
+            listener.done();
+        }
     }
 
     public static void copy(Path src, Path dest, FileOperationProgressListener listener) throws IOException,
@@ -70,22 +64,26 @@ public class FileCopier {
         final List<Path> destFiles = new ArrayList<>();
         final Set<Path> srcFileSet = new HashSet<>();
 
-        Files.walkFileTree(src, new SimpleFileVisitor(f -> {
+        SimpleFileVisitor v = new SimpleFileVisitor(f -> {
             if (!f.equals(src)){
                 f = src.relativize(f);
                 srcFiles.add(f);
                 srcFileSet.add(f);
             }
-        }, false));
+        }, false);
+        Files.walkFileTree(src, v);
         Files.walkFileTree(dest, new SimpleFileVisitor(f -> {
             if (!f.equals(dest)){
                 destFiles.add(dest.relativize(f));
             }
         }, true));
+        
+        final long totalSize = v.size;
 
         if (listener != null){
-            listener.start(srcFiles.size());
+            listener.start(totalSize);
         }
+
 
         for (Path src1: srcFiles){
             final Path dest1 = dest.resolve(src1);
@@ -94,10 +92,10 @@ public class FileCopier {
             if (dest1f.exists()){
                 if (dest1f.isDirectory()){
                     if (src1f.isFile()){
-                        deleteFileTree(dest1);
+                        deleteFileTree(dest1, null);
                     }
                     else {
-                        listener.onFileDone(src1);
+                        // listener.onFileDone(src1);
                         continue;
                     }
                 }
@@ -107,7 +105,7 @@ public class FileCopier {
                     }
                     else if (checkSum(src1, dest1)){
                         LOGGER.debug("Skipping non-modified file {}", src1.toString());
-                        listener.onFileDone(src1);
+                        listener.onFileDone(src1, src1f.length());
                         continue;
                     }
                 }
@@ -116,7 +114,7 @@ public class FileCopier {
             Files.copy(src1, dest1, StandardCopyOption.REPLACE_EXISTING);
             LOGGER.debug("Copied file(or dir) {} to {}", src1.toString(), dest1.toString());
 
-            listener.onFileDone(src1);
+            listener.onFileDone(src1, src1f.length());
         }
 
         for (Path dest1: destFiles){

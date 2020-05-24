@@ -182,16 +182,20 @@ public class BackupCommand {
         }
         cctx.getConfirmationManager().submit(src.getName(), src, s -> {
             if (cctx.tryBeginTask(src)) {
+                final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().deletingBackupTitle, b.getInfo().name));
                 try {
-                    b.delete();
+                    server.getPlayerManager().broadcastChatMessage(
+                            render(getFormat().deletingBackup, src.getName(), b.getInfo().name), false);
+                    b.delete(progressBar);
                     server.getPlayerManager().broadcastChatMessage(
                             render(getFormat().deletedBackup, src.getName(), b.getInfo().name), false);
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     e.printStackTrace();
                     server.getPlayerManager().broadcastChatMessage(
                             render(getFormat().failedToDeletedBackup, src.getName(), b.getInfo().name, e.toString()),
                             false);
                 } finally {
+                    progressBar.done();
                     cctx.endTask();
                 }
             }
@@ -234,7 +238,7 @@ public class BackupCommand {
         server.save(false, true, true);
         server.getPlayerManager().saveAllPlayerData();
         return CompletableFuture.runAsync(() -> {
-            final FileCopyProgressBar progressBar = new FileCopyProgressBar(server);
+            final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().creatingBackupTitle, entry.getInfo().name));
             try {
                 Path worldDir = getWorldDir(server);
                 LOGGER.info("world dir: " + worldDir.toString());
@@ -252,7 +256,7 @@ public class BackupCommand {
 
     private static void doCopy(MinecraftServer server, BackupEntry entry, BackupEntry other)
             throws NoSuchAlgorithmException, IOException {
-        final FileCopyProgressBar progressBar = new FileCopyProgressBar(server);
+        final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, getFormat().fileCopyBarTitle);
         try {
             entry.copyTo(other, progressBar);
         }
@@ -438,17 +442,25 @@ public class BackupCommand {
         final BackupCommandContext cctx = ((IServer)src.getMinecraftServer()).getContext();
         final List<BackupEntry> entries = cctx.getBackupFactory().getBackups(src.getMinecraftServer().getLevelName());
         Collections.sort(entries);
-        src.sendFeedback(getFormat().backupListTitle, false);
-        for (BackupEntry entry: entries){
-            src.sendFeedback(render(
-                entry.getInfo().locked ? getFormat().lockedBackupListItem : getFormat().backupListItem,
-                entry.getInfo().name,
-                entry.getInfo().description,
-                getConfig().dateFormat.format(entry.getInfo().date)
-            ), false);
-        }
-        final String size = String.format("%.2f", (float)cctx.getBackupFactory().totalSize() / 1024F / 1024F);
-        src.sendFeedback(render(getFormat().backupListFooter, size), false);
+        CompletableFuture.runAsync(() -> {
+            try {
+                final String size = String.format("%.2f", (float)cctx.getBackupFactory().totalSize() / 1024F / 1024F);
+                src.sendFeedback(getFormat().backupListTitle, false);
+                for (BackupEntry entry: entries){
+                    src.sendFeedback(render(
+                        entry.getInfo().locked ? getFormat().lockedBackupListItem : getFormat().backupListItem,
+                        entry.getInfo().name,
+                        entry.getInfo().description,
+                        getConfig().dateFormat.format(entry.getInfo().date)
+                    ), false);
+                }
+                src.sendFeedback(render(getFormat().backupListFooter, size), false);
+            }
+            catch(Throwable e){
+                src.sendError(render(getFormat().failedToRetrieveList, e.toString()));
+                e.printStackTrace();
+            }
+        });
         return 1;
     }
 
