@@ -171,7 +171,7 @@ public abstract class MixinMinecraftServer implements IServer {
                         limbo.getFileCopyListener());
             } catch (NoSuchAlgorithmException | IOException e) {
                 e.printStackTrace();
-                limbo.broadCast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));
+                limbo.broadcast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));
             }
             loadWorld(levelName, prop.getLevelName(), prop.getSeed(), prop.getGeneratorType(), Dynamic.convert(NbtOps.INSTANCE, JsonOps.INSTANCE, prop.getGeneratorOptions()), limbo.getWorldGenListener());
             limbo.end();

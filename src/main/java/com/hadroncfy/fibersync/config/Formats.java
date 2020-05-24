@@ -46,6 +46,8 @@ public class Formats {
         .append(new LiteralText("$3").setStyle(new Style().setColor(Formatting.GREEN)))
         .append(new LiteralText(" 描述：").setStyle(new Style().setColor(Formatting.WHITE)))
         .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GREEN))),
+    backupListFooter = empty().append(new LiteralText("总大小：").setStyle(new Style().setColor(Formatting.BLUE)))
+        .append(new LiteralText("$1M").setStyle(new Style().setColor(Formatting.GOLD))),
     backupNotExist = red("[Fibersync] 该备份不存在"),
     rollbackAlert = new LiteralText("[Fibersync] 将要回档至")
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD))),

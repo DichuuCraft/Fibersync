@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.minecraft.network.ClientConnection;
+import net.minecraft.network.MessageType;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
@@ -36,6 +37,10 @@ public class Limbo implements Runnable {
 
     public Limbo(MinecraftServer server) {
         this.server = server;
+    }
+
+    public MinecraftServer getServer(){
+        return server;
     }
 
     public void start() {
@@ -120,8 +125,8 @@ public class Limbo implements Runnable {
         }
     }
 
-    public void broadCast(Text txt){
-        sendToAll(new ChatMessageS2CPacket(txt));
+    public void broadcast(Text txt){
+        sendToAll(new ChatMessageS2CPacket(txt, MessageType.CHAT));
     }
 
     public void tick() {

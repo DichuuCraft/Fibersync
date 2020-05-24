@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.google.gson.JsonParseException;
+import com.hadroncfy.fibersync.util.FileUtil;
 
 public class BackupFactory {
     private final Supplier<Path> dir;
@@ -62,5 +63,9 @@ public class BackupFactory {
 
         Path backupEntryDir = dir.get().resolve(levelName).resolve(name);
         return new BackupEntry(backupEntryDir, info);
+    }
+
+    public long totalSize(){
+        return FileUtil.totalSize(dir.get());
     }
 }

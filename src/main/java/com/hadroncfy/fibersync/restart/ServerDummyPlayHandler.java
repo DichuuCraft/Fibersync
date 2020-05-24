@@ -1,5 +1,8 @@
 package com.hadroncfy.fibersync.restart;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.listener.ServerPlayPacketListener;
@@ -46,12 +49,22 @@ import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateSignC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateStructureBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.VehicleMoveC2SPacket;
+import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
+import net.minecraft.network.packet.s2c.play.KeepAliveS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
 import net.minecraft.text.Text;
+import net.minecraft.text.TranslatableText;
+import net.minecraft.util.Util;
 
 public class ServerDummyPlayHandler implements ServerPlayPacketListener {
+    private static final Logger LOGGER = LogManager.getLogger();
     private final AwaitingPlayer player;
     private final Limbo limbo;
+
+    private boolean waitingForKeepAlive;
+    private long lastKeepAliveTime = Util.getMeasuringTimeMs();
+    private long keepAliveId;
+
 
     public ServerDummyPlayHandler(Limbo limbo, AwaitingPlayer player){
         this.player = player;
@@ -64,9 +77,33 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
         player.getConnection().send(new PlayerAbilitiesS2CPacket(ab));
     }
 
+    private void disconnect(Text reason){
+        final ClientConnection connection = player.getConnection();
+        connection.send(new DisconnectS2CPacket(reason), future -> {
+            connection.disconnect(reason);
+        });
+        connection.disableAutoRead();
+        connection.handleDisconnection();
+    }
+
+    public void tick(){
+        long l = Util.getMeasuringTimeMs();
+        if (l - lastKeepAliveTime >= 15000L) {
+           if (waitingForKeepAlive) {
+              this.disconnect(new TranslatableText("disconnect.timeout", new Object[0]));
+           } else {
+              waitingForKeepAlive = true;
+              lastKeepAliveTime = l;
+              keepAliveId = l;
+              player.getConnection().send(new KeepAliveS2CPacket(keepAliveId));
+           }
+        }
+    }
+
     @Override
     public void onDisconnected(Text reason) {
         player.markAsRemoved();
+        LOGGER.info("{} lost connection: {}", player.getEntity().getGameProfile().getName(), reason.asString());
     }
 
     @Override
@@ -76,14 +113,15 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onHandSwing(HandSwingC2SPacket packet) {
-        // TODO Auto-generated method stub
 
     }
 
     @Override
     public void onChatMessage(ChatMessageC2SPacket packet) {
-        // TODO Auto-generated method stub
-
+        final String msg = packet.getChatMessage();
+        Text text = new TranslatableText("chat.type.text", new Object[]{player.getEntity().getGameProfile().getName(), msg});
+        // player.getEntity().networkHandler.onChatMessage(packet);
+        limbo.broadcast(text);
     }
 
     @Override
@@ -142,8 +180,11 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onKeepAlive(KeepAliveC2SPacket packet) {
-        // TODO Auto-generated method stub
-
+        if (this.waitingForKeepAlive && packet.getId() == this.keepAliveId) {
+            this.waitingForKeepAlive = false;
+         } else if (!limbo.getServer().isOwner(player.getEntity().getGameProfile())) {
+            this.disconnect(new TranslatableText("disconnect.timeout", new Object[0]));
+         }
     }
 
     @Override

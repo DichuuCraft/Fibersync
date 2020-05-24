@@ -15,7 +15,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 
 public class FileCopyProgressBar implements FileOperationProgressListener {
-    private int count, copied = 0;
+    private int count = 0, copied = 0;
     private final MinecraftServer server;
     private final ServerBossBar progressBar = new ServerBossBar(getFormat().fileCopyBarTitle, Color.GREEN, Style.PROGRESS);
 
@@ -47,6 +47,6 @@ public class FileCopyProgressBar implements FileOperationProgressListener {
             public void run() {
                 progressBar.clearPlayers();
             }
-        }, 2000);
+        }, 1000);
     }
 }

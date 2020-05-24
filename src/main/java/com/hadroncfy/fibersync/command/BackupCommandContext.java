@@ -19,7 +19,7 @@ public class BackupCommandContext implements Supplier<Path> {
 
     @Override
     public Path get() {
-        return new File(FibersyncMod.getConfig().backupDir).toPath();
+        return FibersyncMod.getConfig().backupDir;
     }
 
     public TaskManager getTaskManager(){

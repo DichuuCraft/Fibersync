@@ -1,5 +1,7 @@
 package com.hadroncfy.fibersync.config;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,15 +18,18 @@ public class Config {
         .registerTypeHierarchyAdapter(Text.class, new Text.Serializer())
         .registerTypeHierarchyAdapter(Style.class, new Style.Serializer())
         .registerTypeAdapterFactory(new LowercaseEnumTypeAdapterFactory())
-        .registerTypeAdapter(SimpleDateFormat.class, new SimpleDateFormatSerializer()).create();
+        .registerTypeAdapter(SimpleDateFormat.class, new SimpleDateFormatSerializer())
+        .registerTypeAdapter(Path.class, new PathSerializer()).create();
     private static final Set<String> DEFAULT_ALT_PREFIX = new HashSet<>();
+    private static final Path configPath = new File("config").toPath();
 
     static {
         DEFAULT_ALT_PREFIX.add("!!fs");
         DEFAULT_ALT_PREFIX.add("!!qb");
     }
 
-    public String backupDir = "config/fibersync";
+    public Path backupDir = configPath.resolve("fibersync").resolve("backups");
+    public Path tempDir = configPath.resolve("fibersync").resolve("temp");
     public SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
     public Set<String> alternativeCmdPrefix = DEFAULT_ALT_PREFIX;
     public int defaultCountDown = 10, maxBackupCount = 5;

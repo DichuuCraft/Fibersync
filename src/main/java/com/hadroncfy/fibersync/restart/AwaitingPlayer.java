@@ -14,7 +14,6 @@ public class AwaitingPlayer {
         this.entity = entity;
         this.connection = connection;
         entity.world = null;
-        entity.networkHandler = null;
         handler = new ServerDummyPlayHandler(limbo, this);
     }
 

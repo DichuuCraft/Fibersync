@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 
+import com.hadroncfy.fibersync.util.FileUtil;
 import com.hadroncfy.fibersync.util.copy.FileCopier;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
@@ -73,5 +74,22 @@ public class BackupEntry implements Comparable<BackupEntry> {
     @Override
     public int compareTo(BackupEntry o) {
         return o.info.date.compareTo(info.date);
+    }
+
+    public boolean collides(BackupEntry other){
+        return dir.equals(other.dir);
+    }
+
+    public void copyTo(BackupEntry other, FileOperationProgressListener listener)
+            throws NoSuchAlgorithmException, IOException {
+        other.doBackup(dir.resolve("world"), listener);
+    }
+
+    public BackupEntry createAtNewDir(Path dir){
+        return new BackupEntry(dir, info);
+    }
+
+    public long totalSize(){
+        return FileUtil.totalSize(dir);
     }
 }
