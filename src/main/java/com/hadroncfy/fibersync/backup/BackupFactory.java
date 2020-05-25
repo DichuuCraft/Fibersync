@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -67,5 +68,15 @@ public class BackupFactory {
 
     public long totalSize(){
         return FileUtil.totalSize(dir.get());
+    }
+
+    public static int getBackupCount(Collection<BackupEntry> entries){
+        int c = 0;
+        for (BackupEntry e: entries){
+            if (!e.getInfo().isOldWorld){
+                c++;
+            }
+        }
+        return c;
     }
 }

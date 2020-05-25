@@ -54,25 +54,29 @@ public class BackupCommand {
         final LiteralArgumentBuilder<ServerCommandSource> b = literal(NAME)
                 .then(literal("list").executes(BackupCommand::list))
                 .then(literal("create")
-                        .then(argument("name", StringArgumentType.word()).suggests(BackupCommand::suggestBackups)
-                                .then(argument("description", MessageArgumentType.message())
-                                        .executes(BackupCommand::create))))
+                    .then(argument("name", StringArgumentType.word()).suggests(BackupCommand::suggestUnlockedBackups)
+                        .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create))))
                 .then(literal("make").executes(BackupCommand::create)
-                        .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create)))
-                .then(literal("back").then(argument("name", StringArgumentType.word())
-                        .suggests(BackupCommand::suggestBackups).executes(BackupCommand::back)))
+                    .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create)))
+                .then(literal("back")
+                    .then(argument("name", StringArgumentType.word())
+                        .suggests(BackupCommand::suggestBackups)
+                        .executes(BackupCommand::back)))
                 .then(literal("confirm")
-                        .then(argument("code", IntegerArgumentType.integer()).executes(BackupCommand::confirm)))
+                    .then(argument("code", IntegerArgumentType.integer()).executes(BackupCommand::confirm)))
                 .then(literal("cancel").executes(BackupCommand::cancel))
                 .then(literal("reload").executes(BackupCommand::reload))
-                .then(literal("delete").then(argument("name", StringArgumentType.word())
+                .then(literal("delete")
+                    .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestUnlockedBackups).executes(BackupCommand::delete)))
-                .then(literal("lock").requires(BackupCommand::canLock)
+                .then(literal("lock")
+                    .requires(BackupCommand::canLock)
                         .then(argument("name", StringArgumentType.word())
-                                .suggests(BackupCommand::suggestUnlockedBackups).executes(ctx -> setLocked(ctx, true))))
-                .then(literal("unlock").requires(BackupCommand::canLock)
-                        .then(argument("name", StringArgumentType.word()).suggests(BackupCommand::suggestLockedBackups)
-                                .executes(ctx -> setLocked(ctx, false))));
+                        .suggests(BackupCommand::suggestUnlockedBackups).executes(ctx -> setLocked(ctx, true))))
+                .then(literal("unlock")
+                    .requires(BackupCommand::canLock)
+                        .then(argument("name", StringArgumentType.word())
+                        .suggests(BackupCommand::suggestLockedBackups).executes(ctx -> setLocked(ctx, false))));
         cd.register(b);
     }
 
@@ -107,7 +111,7 @@ public class BackupCommand {
             FibersyncMod.loadConfig();
             src.sendFeedback(getFormat().reloadedConfig, true);
             return 0;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             src.sendError(render(getFormat().failedToCopyLevelFiles, e.toString()));
             return 1;
         }
@@ -220,7 +224,7 @@ public class BackupCommand {
                 server.getPlayerManager()
                         .broadcastChatMessage(render(locked ? getFormat().lockedBackup : getFormat().unlockedBackup,
                                 src.getName(), entry.getInfo().name), false);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 e.printStackTrace();
                 server.getPlayerManager().broadcastChatMessage(
                         render(getFormat().failedToWriteInfo, src.getName(), e.toString()), false);
@@ -270,7 +274,7 @@ public class BackupCommand {
         int i = 1;
         out:
         while (true){
-            name = prefix + "-" + i++;
+            name = prefix + i++;
             for (BackupEntry e: entries){
                 if (e.getInfo().name.equals(name)){
                     continue out;
@@ -302,32 +306,25 @@ public class BackupCommand {
         final int maxBackups = getConfig().maxBackupCount;
         
         final String description = tryGetArg(() -> MessageArgumentType.getMessage(ctx, "description").asString(), () -> "");
-        BackupEntry b, b2 = null;
-        try {
-            final String name = StringArgumentType.getString(ctx, "name");
-            b = cctx.getBackupFactory().create(server.getLevelName(), name, description, getSourceUUID(ctx));
-            if (b.exists()){
-                b2 = b;
-            }
-            else if (maxBackups != -1 && entries.size() >= maxBackups){
-                src.sendError(getFormat().backupCountFull);
-                return 0;
+        BackupEntry b2 = null;
+
+        final String name = tryGetArg(() -> StringArgumentType.getString(ctx, "name"), () -> getEmptyBackupName("b", entries));
+        final BackupEntry selected = cctx.getBackupFactory().create(server.getLevelName(), name, description, getSourceUUID(ctx));
+        if (selected.exists()){
+            b2 = selected;
+        }
+        else if (maxBackups != -1 && BackupFactory.getBackupCount(entries) >= maxBackups){
+            b2 = getOldestUnlockedEntry(entries);
+            if (b2 == null){
+                src.sendError(getFormat().allBackupsLocked);
+                return 1;
             }
         }
-        catch(IllegalArgumentException e){
-            if (maxBackups != -1 && entries.size() >= maxBackups){
-                b2 = getOldestUnlockedEntry(entries);
-                if (b2 == null){
-                    src.sendError(getFormat().allBackupsLocked);
-                    return 1;
-                }
-            }
-            b = cctx.getBackupFactory().create(server.getLevelName(), getEmptyBackupName("backup", entries), description, getSourceUUID(ctx));
-        }
-        final BackupEntry selected = b, overwrite = b2;
+        
+
+        final BackupEntry overwrite = b2;
         
         final String senderName = src.getName();
-        final String name = selected.getInfo().name;
         final Runnable btask = () -> {
             if (cctx.tryBeginTask(src)){
                 server.getPlayerManager().broadcastChatMessage(render(getFormat().creatingBackup, senderName, name), false);
@@ -372,14 +369,9 @@ public class BackupCommand {
             return 0;
         }
 
-        final int maxBackups = getConfig().maxBackupCount;
         final BackupEntry currentWorld = cctx.getBackupFactory().create(server.getLevelName(), getConfig().oldWorldName, getConfig().oldWorldDescription, getSourceUUID(ctx));
         currentWorld.getInfo().locked = true;
-        final List<BackupEntry> entries = cctx.getBackupFactory().getBackups(server.getLevelName());
-        if (!currentWorld.exists() && maxBackups != -1 && entries.size() >= maxBackups){
-            src.sendError(getFormat().backupCountFullWhenRollback);
-            return 0;
-        }
+        currentWorld.getInfo().isOldWorld = true;
 
         cctx.getConfirmationManager().submit(src.getName(), src, (s) -> {
             if (cctx.tryBeginTask(src)){
@@ -410,8 +402,10 @@ public class BackupCommand {
                                     CompletableFuture.runAsync(() -> {
                                         try {
                                             doCopy(server, autoBackup, currentWorld);
+                                            server.getPlayerManager().broadcastChatMessage(getFormat().copiedFromTempDir, false);
                                         } catch (Throwable e1) {
                                             e1.printStackTrace();
+                                            server.getPlayerManager().broadcastChatMessage(render(getFormat().failedToCopyFromTempDir, e1.toString()), false);
                                         }
                                         finally {
                                             cctx.endTask();
