@@ -17,6 +17,7 @@ public class BackupInfo {
     public String description;
     public boolean locked, isOldWorld;
     public UUID creator;
+    public long size;
 
     public void refresh(String description, UUID creator){
         this.date = new Date();

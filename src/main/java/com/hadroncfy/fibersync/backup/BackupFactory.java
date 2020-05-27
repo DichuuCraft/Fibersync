@@ -66,10 +66,6 @@ public class BackupFactory {
         return new BackupEntry(backupEntryDir, info);
     }
 
-    public long totalSize(){
-        return FileUtil.totalSize(dir.get());
-    }
-
     public static int getBackupCount(Collection<BackupEntry> entries){
         int c = 0;
         for (BackupEntry e: entries){

@@ -438,7 +438,11 @@ public class BackupCommand {
         Collections.sort(entries);
         CompletableFuture.runAsync(() -> {
             try {
-                final String size = String.format("%.2f", (float)cctx.getBackupFactory().totalSize() / 1024F / 1024F);
+                long totalSize = 0;
+                for (BackupEntry entry: entries){
+                    totalSize += entry.totalSize();
+                }
+
                 src.sendFeedback(getFormat().backupListTitle, false);
                 for (BackupEntry entry: entries){
                     src.sendFeedback(render(
@@ -448,7 +452,7 @@ public class BackupCommand {
                         getConfig().dateFormat.format(entry.getInfo().date)
                     ), false);
                 }
-                src.sendFeedback(render(getFormat().backupListFooter, size), false);
+                src.sendFeedback(render(getFormat().backupListFooter, String.format("%.2f", (float)totalSize / 1024 / 1024)), false);
             }
             catch(Throwable e){
                 src.sendError(render(getFormat().failedToRetrieveList, e.toString()));

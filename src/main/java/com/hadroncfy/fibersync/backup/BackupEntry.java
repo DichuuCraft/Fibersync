@@ -54,8 +54,8 @@ public class BackupEntry implements Comparable<BackupEntry> {
             f.mkdirs();
         }
 
+        info.size = FileCopier.copy(worldDir, backupDir, listener);
         writeInfo();
-        FileCopier.copy(worldDir, backupDir, listener);
     }
 
     public void delete(FileOperationProgressListener listener) throws IOException {
@@ -89,7 +89,11 @@ public class BackupEntry implements Comparable<BackupEntry> {
         return new BackupEntry(dir, info);
     }
 
-    public long totalSize(){
-        return FileUtil.totalSize(dir);
+    public long totalSize() throws IOException {
+        if (info.size == 0){
+            info.size = FileUtil.totalSize(dir);
+            writeInfo();
+        }
+        return info.size;
     }
 }

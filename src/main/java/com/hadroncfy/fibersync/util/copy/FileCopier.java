@@ -58,7 +58,7 @@ public class FileCopier {
         }
     }
 
-    public static void copy(Path src, Path dest, FileOperationProgressListener listener) throws IOException,
+    public static long copy(Path src, Path dest, FileOperationProgressListener listener) throws IOException,
             NoSuchAlgorithmException {
         final List<Path> srcFiles = new ArrayList<>();
         final List<Path> destFiles = new ArrayList<>();
@@ -124,5 +124,7 @@ public class FileCopier {
             }
         }
         listener.done();
+
+        return totalSize;
     }
 }
