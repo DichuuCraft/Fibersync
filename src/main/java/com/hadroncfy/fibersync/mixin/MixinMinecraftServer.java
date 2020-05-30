@@ -21,12 +21,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.minecraft.datafixer.NbtOps;
+import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.WorldGenerationProgressListener;
@@ -87,6 +89,9 @@ public abstract class MixinMinecraftServer implements IServer {
     protected abstract void loadWorldDataPacks(File worldDir, LevelProperties levelProperties);
 
     @Shadow
+    public abstract void reload();
+
+    @Shadow
     public abstract Difficulty getDefaultDifficulty();
 
     @Shadow
@@ -97,6 +102,9 @@ public abstract class MixinMinecraftServer implements IServer {
 
     @Shadow
     private boolean running;
+
+    @Shadow @Mutable
+    private ServerScoreboard scoreboard;
 
     private BackupCommandContext commandContext = new BackupCommandContext();
 
@@ -125,9 +133,6 @@ public abstract class MixinMinecraftServer implements IServer {
             levelInfo2 = new LevelInfo(levelProperties);
         }
 
-        loadWorldDataPacks(worldSaveHandler.getWorldDir(), levelProperties);
-        // WorldGenerationProgressListener worldGenerationProgressListener =
-        // worldGenerationProgressListenerFactory.create(11);
         createWorlds(worldSaveHandler, levelProperties, levelInfo2, startRegionListener);
         setDifficulty(getDefaultDifficulty(), true);
         prepareStartRegion(startRegionListener);
@@ -173,7 +178,10 @@ public abstract class MixinMinecraftServer implements IServer {
                 e.printStackTrace();
                 limbo.broadcast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));
             }
+            scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
             loadWorld(levelName, prop.getLevelName(), prop.getSeed(), prop.getGeneratorType(), Dynamic.convert(NbtOps.INSTANCE, JsonOps.INSTANCE, prop.getGeneratorOptions()), limbo.getWorldGenListener());
+            
+            reload();
             limbo.end();
 
             reloadCB.run();

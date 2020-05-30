@@ -1,23 +1,35 @@
 package com.hadroncfy.fibersync.mixin;
 
+import java.util.Map;
+import java.util.UUID;
+
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
 import com.hadroncfy.fibersync.restart.Limbo;
 
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.minecraft.advancement.PlayerAdvancementTracker;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.stat.ServerStatHandler;
 import net.minecraft.world.dimension.DimensionType;
 
 @Mixin(PlayerManager.class)
 public class MixinPlayerManager implements IPlayerManager {
     private boolean shouldRefreshScreen;
     private Limbo limbo = null;
+
+    @Shadow @Final
+    private Map<UUID, ServerStatHandler> statisticsMap;
+    @Shadow @Final
+    private Map<UUID, PlayerAdvancementTracker> advancementTrackers;
 
     @Inject(method = "onPlayerConnect", at = @At(
         value = "INVOKE", 
@@ -52,5 +64,11 @@ public class MixinPlayerManager implements IPlayerManager {
     @Override
     public void setLimbo(Limbo limbo) {
         this.limbo = limbo;
+    }
+
+    @Override
+    public void reset() {
+        statisticsMap.clear();
+        advancementTrackers.clear();
     }
 }

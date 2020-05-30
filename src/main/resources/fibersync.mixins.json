@@ -10,7 +10,8 @@
       "WorldSaveHandlerAccessor",
       "MixinPlayerManager",
       "ContainerAccessor",
-      "MixinServerPlayNetworkHandler"
+      "MixinServerPlayNetworkHandler",
+      "MixinServerPlayerEntity"
     ],
     "client": [
     ],

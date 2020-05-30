@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import com.hadroncfy.fibersync.interfaces.IPlayer;
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
 import com.hadroncfy.fibersync.mixin.ContainerAccessor;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
@@ -93,6 +94,7 @@ public class Limbo implements Runnable {
 
         rollBackProgressListener.end();
 
+        pm.reset();
         pm.setLimbo(null);
 
         if (server.isSinglePlayer() && players.size() == 0){
@@ -110,7 +112,7 @@ public class Limbo implements Runnable {
                 final ServerPlayerEntity playerEntity = player.getEntity();
                 playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
                 playerEntity.removed = false;
-                ((ContainerAccessor)playerEntity.container).getListeners().clear(); // avoid inventory desync
+                ((IPlayer)playerEntity).reset();
     
                 playerManager.onPlayerConnect(player.getConnection(), player.getEntity());
             }
