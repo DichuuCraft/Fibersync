@@ -15,6 +15,7 @@ import java.util.function.Supplier;
 import static net.minecraft.server.command.CommandManager.argument;
 
 import com.hadroncfy.fibersync.FibersyncMod;
+import com.hadroncfy.fibersync.Mode;
 import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.backup.BackupFactory;
 import com.hadroncfy.fibersync.backup.BackupInfo;
@@ -54,10 +55,13 @@ public class BackupCommand {
         final LiteralArgumentBuilder<ServerCommandSource> b = literal(NAME)
                 .then(literal("list").executes(BackupCommand::list))
                 .then(literal("create")
+                    .requires(BackupCommand::isBackupMode)
                     .then(argument("name", StringArgumentType.word()).suggests(BackupCommand::suggestUnlockedBackups)
                         .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create))))
-                .then(literal("make").executes(BackupCommand::create)
-                    .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create)))
+                .then(literal("make")
+                    .requires(BackupCommand::isBackupMode)
+                    .executes(BackupCommand::create)
+                        .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create)))
                 .then(literal("back")
                     .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestBackups)
@@ -67,17 +71,24 @@ public class BackupCommand {
                 .then(literal("cancel").executes(BackupCommand::cancel))
                 .then(literal("reload").executes(BackupCommand::reload))
                 .then(literal("delete")
+                    .requires(BackupCommand::isBackupMode)
                     .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestUnlockedBackups).executes(BackupCommand::delete)))
                 .then(literal("lock")
+                    .requires(BackupCommand::isBackupMode)
                     .requires(BackupCommand::canLock)
                         .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestUnlockedBackups).executes(ctx -> setLocked(ctx, true))))
                 .then(literal("unlock")
+                    .requires(BackupCommand::isBackupMode)
                     .requires(BackupCommand::canLock)
                         .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestLockedBackups).executes(ctx -> setLocked(ctx, false))));
         cd.register(b);
+    }
+
+    private static boolean isBackupMode(ServerCommandSource src){
+        return getConfig().mode == Mode.BACKUP;
     }
 
     private static CompletableFuture<Suggestions> suggestBackups(final CommandContext<ServerCommandSource> context,

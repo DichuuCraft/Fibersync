@@ -8,6 +8,7 @@ import java.util.Set;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.hadroncfy.fibersync.Mode;
 
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
@@ -34,6 +35,7 @@ public class Config {
     public Set<String> alternativeCmdPrefix = DEFAULT_ALT_PREFIX;
     public int defaultCountDown = 10, maxBackupCount = 5;
     public String oldWorldName = "oldworld", oldWorldDescription = "回档前自动备份";
+    public Mode mode = Mode.BACKUP;
 
     public Formats formats = new Formats();
 }
