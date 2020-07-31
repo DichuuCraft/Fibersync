@@ -11,7 +11,6 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 
 import com.google.gson.JsonParseException;
-import com.hadroncfy.fibersync.command.BackupCommand;
 import com.hadroncfy.fibersync.config.Config;
 import com.hadroncfy.fibersync.config.Formats;
 
@@ -25,7 +24,11 @@ public class FibersyncMod implements ModInitializer {
     private static Config config;
 
     public static void loadConfig() throws IOException, JsonParseException {
-        File c = new File("config", "fibersync.json");
+        File dir = new File("config");
+        if (!dir.exists()){
+            dir.mkdirs();
+        }
+        File c = new File(dir, "fibersync.json");
         if (c.exists()){
             try (Reader reader = new InputStreamReader(new FileInputStream(c), StandardCharsets.UTF_8)){
                 config = Config.GSON.fromJson(reader, Config.class);
@@ -44,7 +47,7 @@ public class FibersyncMod implements ModInitializer {
         try {
             loadConfig();
         }
-        catch(JsonParseException | IOException e){
+        catch(Throwable e){
             LOGGER.error("Failed to load config");
             e.printStackTrace();
             config = new Config();

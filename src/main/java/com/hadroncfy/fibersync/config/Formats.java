@@ -80,5 +80,14 @@ public class Formats {
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN))),
     failedToRetrieveList = red("[Fibersync] 获取存档列表时出错：$1"),
     failedToCopyFromTempDir = red("[Fibersync] 从临时目录复制文件时出错：$1"),
-    copiedFromTempDir = new LiteralText("[Fibersync] 文件复制完成");
+    copiedFromTempDir = new LiteralText("[Fibersync] 文件复制完成"),
+    syncComplete = new LiteralText("[Fibersync] 同步完成"),
+    syncAlert = new LiteralText("[Fibersync] 将要同步至")
+        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD))),
+    syncConfirmedAlert = new LiteralText("[Fibersync] $1：将要同步至")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD))),
+    syncStarted = new LiteralText("[Fibersync] 正在同步"),
+    syncFinished = new LiteralText("[Fibersync] 同步完成"),
+    syncCountDownTitle = empty().append(new LiteralText("准备同步：").setStyle(new Style().setColor(Formatting.GREEN)))
+        .append(new LiteralText("$1").setStyle(new Style().setBold(true)));
 }

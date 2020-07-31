@@ -63,9 +63,15 @@ public class BackupCommand {
                     .executes(BackupCommand::create)
                         .then(argument("description", MessageArgumentType.message()).executes(BackupCommand::create)))
                 .then(literal("back")
+                    .requires(BackupCommand::isBackupMode)
                     .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestBackups)
                         .executes(BackupCommand::back)))
+                .then(literal("sync")
+                    .requires(BackupCommand::isMirrorMode)
+                    .then(argument("name", StringArgumentType.word())
+                        .suggests(BackupCommand::suggestBackups)
+                        .executes(BackupCommand::sync)))
                 .then(literal("confirm")
                     .then(argument("code", IntegerArgumentType.integer()).executes(BackupCommand::confirm)))
                 .then(literal("cancel").executes(BackupCommand::cancel))
@@ -75,13 +81,11 @@ public class BackupCommand {
                     .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestUnlockedBackups).executes(BackupCommand::delete)))
                 .then(literal("lock")
-                    .requires(BackupCommand::isBackupMode)
-                    .requires(BackupCommand::canLock)
+                    .requires(src -> isBackupMode(src) && canLock(src))
                         .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestUnlockedBackups).executes(ctx -> setLocked(ctx, true))))
                 .then(literal("unlock")
-                    .requires(BackupCommand::isBackupMode)
-                    .requires(BackupCommand::canLock)
+                    .requires(src -> isBackupMode(src) && canLock(src))
                         .then(argument("name", StringArgumentType.word())
                         .suggests(BackupCommand::suggestLockedBackups).executes(ctx -> setLocked(ctx, false))));
         cd.register(b);
@@ -89,6 +93,10 @@ public class BackupCommand {
 
     private static boolean isBackupMode(ServerCommandSource src){
         return getConfig().mode == Mode.BACKUP;
+    }
+
+    private static boolean isMirrorMode(ServerCommandSource src){
+        return getConfig().mode == Mode.MIRROR;
     }
 
     private static CompletableFuture<Suggestions> suggestBackups(final CommandContext<ServerCommandSource> context,
@@ -367,6 +375,39 @@ public class BackupCommand {
         else {
             btask.run();
         }
+        return 1;
+    }
+
+    private static int sync(CommandContext<ServerCommandSource> ctx){
+        final ServerCommandSource src = ctx.getSource();
+        final MinecraftServer server = src.getMinecraftServer();
+        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final BackupEntry entry = cctx.getBackupFactory().getEntry(server.getLevelName(), StringArgumentType.getString(ctx, "name"));
+        if (entry == null || !entry.exists()){
+            src.sendError(getFormat().backupNotExist);
+            return 0;
+        }
+
+        cctx.getConfirmationManager().submit(src.getName(), src, s -> {
+            if (cctx.tryBeginTask(src)){
+                server.getPlayerManager().broadcastChatMessage(render(getFormat().syncConfirmedAlert, src.getName(), entry.getInfo().name), true);
+
+                cctx.countDownTask = new CountDownTask(getConfig().defaultCountDown);
+                cctx.countDownTask.run(i -> {
+                    Text title = render(getFormat().syncCountDownTitle, i.toString());
+                    server.getPlayerManager().sendToAll(new TitleS2CPacket(TitleS2CPacket.Action.ACTIONBAR, title, 10, 10, -1));
+                }).thenAccept(b -> {
+                    cctx.countDownTask = null;
+                    if (b){
+                        server.getPlayerManager().sendToAll(getFormat().syncStarted);
+                        ((IServer) server).reloadAll(entry, () -> {
+                            server.getPlayerManager().sendToAll(getFormat().syncComplete);
+                            cctx.endTask();
+                        });
+                    }
+                });
+            }
+        });
         return 1;
     }
 
