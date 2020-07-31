@@ -20,7 +20,7 @@ public class Config {
         .registerTypeHierarchyAdapter(Style.class, new Style.Serializer())
         .registerTypeAdapterFactory(new LowercaseEnumTypeAdapterFactory())
         .registerTypeAdapter(SimpleDateFormat.class, new SimpleDateFormatSerializer())
-        .registerTypeAdapter(Path.class, new PathSerializer()).create();
+        .registerTypeHierarchyAdapter(Path.class, new PathSerializer()).create();
     private static final Set<String> DEFAULT_ALT_PREFIX = new HashSet<>();
     private static final Path configPath = new File("config").toPath();
 

@@ -3,6 +3,7 @@ package com.hadroncfy.fibersync.config;
 import java.io.File;
 import java.lang.reflect.Type;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -22,7 +23,7 @@ public class PathSerializer implements JsonDeserializer<Path>, JsonSerializer<Pa
     @Override
     public Path deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
             throws JsonParseException {
-        return new File(json.getAsString()).toPath();
+        return Paths.get(json.getAsString());
     }
     
 }

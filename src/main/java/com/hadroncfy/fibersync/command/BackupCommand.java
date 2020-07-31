@@ -131,7 +131,7 @@ public class BackupCommand {
             src.sendFeedback(getFormat().reloadedConfig, true);
             return 0;
         } catch (Throwable e) {
-            src.sendError(render(getFormat().failedToCopyLevelFiles, e.toString()));
+            src.sendError(render(getFormat().failedToLoadConfig, e.toString()));
             return 1;
         }
     }
