@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 
+import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.util.FileUtil;
 import com.hadroncfy.fibersync.util.copy.FileCopier;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
@@ -55,7 +56,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
             f.mkdirs();
         }
 
-        info.size = FileCopier.copy(worldDir, backupDir, listener);
+        info.size = FileCopier.copy(worldDir, backupDir, FibersyncMod.getConfig().excludes, listener);
         writeInfo();
     }
 
@@ -63,13 +64,16 @@ public class BackupEntry implements Comparable<BackupEntry> {
         FileCopier.deleteFileTree(dir, listener);
     }
 
-    public void overwriteTo(BackupEntry entry){
+    public void overwriteTo(BackupEntry entry) throws IOException {
         File f1 = entry.dir.toFile();
-        f1.renameTo(entry.dir.resolveSibling(info.name).toFile());
+        File dest = entry.dir.resolveSibling(info.name).toFile();
+        if (!f1.renameTo(dest)){
+            throw new IOException("Failed to rename entry " + f1.toString() + " to " + dest.toString());
+        }
     }
 
     public void back(Path worldDir, FileOperationProgressListener listener) throws NoSuchAlgorithmException, IOException {
-        FileCopier.copy(dir.resolve("world"), worldDir, listener);
+        FileCopier.copy(dir.resolve("world"), worldDir, FibersyncMod.getConfig().excludes, listener);
     }
 
     @Override

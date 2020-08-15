@@ -2,13 +2,14 @@ package com.hadroncfy.fibersync.config;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.text.SimpleDateFormat;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.hadroncfy.fibersync.Mode;
+import com.hadroncfy.fibersync.util.SimpleFileExcluder;
 
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
@@ -20,7 +21,9 @@ public class Config {
         .registerTypeHierarchyAdapter(Style.class, new Style.Serializer())
         .registerTypeAdapterFactory(new LowercaseEnumTypeAdapterFactory())
         .registerTypeAdapter(SimpleDateFormat.class, new SimpleDateFormatSerializer())
-        .registerTypeHierarchyAdapter(Path.class, new PathSerializer()).create();
+        .registerTypeHierarchyAdapter(Path.class, new PathSerializer())
+        .registerTypeHierarchyAdapter(PathMatcher.class, new FileExcluderSerializer()).create();
+
     private static final Set<String> DEFAULT_ALT_PREFIX = new HashSet<>();
     private static final Path configPath = new File("config").toPath();
 
@@ -35,7 +38,9 @@ public class Config {
     public Set<String> alternativeCmdPrefix = DEFAULT_ALT_PREFIX;
     public int defaultCountDown = 10, maxBackupCount = 5;
     public String oldWorldName = "oldworld", oldWorldDescription = "回档前自动备份";
-    public Mode mode = Mode.BACKUP;
+
+    public Path syncDir = null;
+    public PathMatcher excludes = new SimpleFileExcluder();
 
     public Formats formats = new Formats();
 }

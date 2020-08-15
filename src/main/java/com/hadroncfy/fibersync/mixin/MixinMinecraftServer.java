@@ -172,7 +172,7 @@ public abstract class MixinMinecraftServer implements IServer {
 
             LOGGER.info("Rolling back");
             try {
-                backupEntry.back(BackupCommand.getWorldDir((MinecraftServer) (Object) this),
+                backupEntry.back(FibersyncMod.getWorldDir((MinecraftServer) (Object) this),
                         limbo.getFileCopyListener());
             } catch (NoSuchAlgorithmException | IOException e) {
                 e.printStackTrace();

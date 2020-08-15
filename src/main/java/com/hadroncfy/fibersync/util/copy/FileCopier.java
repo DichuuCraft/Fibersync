@@ -1,18 +1,11 @@
 package com.hadroncfy.fibersync.util.copy;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.CopyOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,7 +32,7 @@ public class FileCopier {
 
     public static void deleteFileTree(Path dir, FileOperationProgressListener listener) throws IOException {
         final List<Path> files = new ArrayList<>();
-        SimpleFileVisitor visitor = new SimpleFileVisitor(f -> files.add(f), true);
+        SimpleFileVisitor visitor = new SimpleFileVisitor(files::add, true);
 
         Files.walkFileTree(dir, visitor);
 
@@ -58,7 +51,7 @@ public class FileCopier {
         }
     }
 
-    public static long copy(Path src, Path dest, FileOperationProgressListener listener) throws IOException,
+    public static long copy(Path src, Path dest, PathMatcher exclude, FileOperationProgressListener listener) throws IOException,
             NoSuchAlgorithmException {
         final List<Path> srcFiles = new ArrayList<>();
         final List<Path> destFiles = new ArrayList<>();
@@ -67,14 +60,19 @@ public class FileCopier {
         SimpleFileVisitor v = new SimpleFileVisitor(f -> {
             if (!f.equals(src)){
                 f = src.relativize(f);
-                srcFiles.add(f);
-                srcFileSet.add(f);
+                if (!exclude.matches(f)){
+                    srcFiles.add(f);
+                    srcFileSet.add(f);
+                }
             }
         }, false);
         Files.walkFileTree(src, v);
         Files.walkFileTree(dest, new SimpleFileVisitor(f -> {
             if (!f.equals(dest)){
-                destFiles.add(dest.relativize(f));
+                f = dest.relativize(f);
+                if (!exclude.matches(f)){
+                    destFiles.add(dest.relativize(f));
+                }
             }
         }, true));
         
@@ -104,7 +102,7 @@ public class FileCopier {
                         Files.delete(dest1);
                     }
                     else if (checkSum(src1, dest1)){
-                        LOGGER.debug("Skipping non-modified file {}", src1.toString());
+                        LOGGER.debug("Skipping non-modified file {}", src1);
                         listener.onFileDone(src1, src1f.length());
                         continue;
                     }
@@ -112,15 +110,15 @@ public class FileCopier {
             }
 
             Files.copy(src1, dest1, StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.debug("Copied file(or dir) {} to {}", src1.toString(), dest1.toString());
+            LOGGER.debug("Copied file(or dir) {} to {}", src1, dest1);
 
             listener.onFileDone(src1, src1f.length());
         }
 
         for (Path dest1: destFiles){
             if (!srcFileSet.contains(dest1)){
-                dest.resolve(dest1).toFile().delete();
-                LOGGER.debug("deleted redundant file {}", dest1.toString());
+                Files.delete(dest.resolve(dest1));
+                LOGGER.debug("deleted redundant file {}", dest1);
             }
         }
         listener.done();
