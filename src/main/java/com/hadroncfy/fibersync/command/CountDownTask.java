@@ -1,7 +1,8 @@
 package com.hadroncfy.fibersync.command;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
+
 
 public class CountDownTask {
     private int fuse;
@@ -18,7 +19,7 @@ public class CountDownTask {
         cancelled = true;
     }
 
-    public CompletableFuture<Boolean> run(Consumer<Integer> onCountDown) {
+    public CompletableFuture<Boolean> run(IntConsumer onCountDown) {
         return CompletableFuture.supplyAsync(() -> {
             do {
                 onCountDown.accept(fuse);

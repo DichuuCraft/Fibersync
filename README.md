@@ -8,4 +8,4 @@ A backup/restore mod with various features:
 * Show operation progress with progress bars;
 * Multiple backup slots;
 * Works both on servers and single players.
-
+* Supports mirror mode: sync world from backups of another server/world.

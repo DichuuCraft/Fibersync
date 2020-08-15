@@ -106,7 +106,7 @@ public abstract class MixinMinecraftServer implements IServer {
     @Shadow @Mutable
     private ServerScoreboard scoreboard;
 
-    private BackupCommandContext commandContext = new BackupCommandContext();
+    private BackupCommandContext commandContext = new BackupCommandContext(() -> levelName);
 
     private void loadWorld(String name, String serverName, long seed, LevelGeneratorType generatorType,
             JsonElement generatorSettings, WorldGenerationProgressListener startRegionListener) {

@@ -97,7 +97,7 @@ public class Limbo implements Runnable {
         pm.reset();
         pm.setLimbo(null);
 
-        if (server.isSinglePlayer() && players.size() == 0){
+        if (server.isSinglePlayer() && players.isEmpty()){
             LOGGER.info("Stopping server as the server has no players");
             // server.stop(true);
         }

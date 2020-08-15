@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 
@@ -16,6 +15,9 @@ import com.hadroncfy.fibersync.util.copy.FileCopier;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 public class BackupEntry implements Comparable<BackupEntry> {
+    private static final String WORLDDIR = "world";
+    private static final String INFO_JSON = "info.json";
+
     private final BackupInfo info;
     private final Path dir;
 
@@ -29,19 +31,19 @@ public class BackupEntry implements Comparable<BackupEntry> {
     }
 
     public void writeInfo() throws IOException {
-        File infoFile = dir.resolve("info.json").toFile();
+        File infoFile = dir.resolve(INFO_JSON).toFile();
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile), StandardCharsets.UTF_8)) {
             writer.write(BackupInfo.GSON.toJson(info));
         }
     }
 
     private boolean checkWorldDir() {
-        Path d = dir.resolve("world");
+        Path d = dir.resolve(WORLDDIR);
         return d.toFile().isDirectory() && d.resolve("level.dat").toFile().exists() && d.resolve("region").toFile().isDirectory();
     }
 
     public boolean exists() {
-        return dir.resolve("info.json").toFile().exists() && checkWorldDir();
+        return dir.resolve(INFO_JSON).toFile().exists() && checkWorldDir();
     }
 
     public void doBackup(Path worldDir, FileOperationProgressListener listener) throws IOException,
@@ -50,7 +52,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
         if (!dirFile.exists()) {
             dirFile.mkdirs();
         }
-        Path backupDir = dir.resolve("world");
+        Path backupDir = dir.resolve(WORLDDIR);
         File f = backupDir.toFile();
         if (!f.exists()) {
             f.mkdirs();
@@ -73,7 +75,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
     }
 
     public void back(Path worldDir, FileOperationProgressListener listener) throws NoSuchAlgorithmException, IOException {
-        FileCopier.copy(dir.resolve("world"), worldDir, FibersyncMod.getConfig().excludes, listener);
+        FileCopier.copy(dir.resolve(WORLDDIR), worldDir, FibersyncMod.getConfig().excludes, listener);
     }
 
     @Override
@@ -87,7 +89,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
 
     public void copyTo(BackupEntry other, FileOperationProgressListener listener)
             throws NoSuchAlgorithmException, IOException {
-        other.doBackup(dir.resolve("world"), listener);
+        other.doBackup(dir.resolve(WORLDDIR), listener);
     }
 
     public BackupEntry createAtNewDir(Path dir){

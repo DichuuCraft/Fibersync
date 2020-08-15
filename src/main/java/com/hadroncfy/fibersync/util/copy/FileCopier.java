@@ -59,7 +59,7 @@ public class FileCopier {
 
         SimpleFileVisitor v = new SimpleFileVisitor(f -> {
             if (!f.equals(src)){
-                f = src.relativize(f);
+                f = src.relativize(f).normalize();
                 if (!exclude.matches(f)){
                     srcFiles.add(f);
                     srcFileSet.add(f);
@@ -69,9 +69,9 @@ public class FileCopier {
         Files.walkFileTree(src, v);
         Files.walkFileTree(dest, new SimpleFileVisitor(f -> {
             if (!f.equals(dest)){
-                f = dest.relativize(f);
+                f = dest.relativize(f).normalize();
                 if (!exclude.matches(f)){
-                    destFiles.add(dest.relativize(f));
+                    destFiles.add(f);
                 }
             }
         }, true));

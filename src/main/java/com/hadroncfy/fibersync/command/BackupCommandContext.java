@@ -1,6 +1,8 @@
 package com.hadroncfy.fibersync.command;
 
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
 import com.hadroncfy.fibersync.FibersyncMod;
@@ -11,14 +13,19 @@ import net.minecraft.server.command.ServerCommandSource;
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 
 public class BackupCommandContext {
-    private final BackupFactory bf = new BackupFactory(BackupCommandContext::getBackupPath);
+    private final BackupFactory bf = new BackupFactory(this::getBackupPath);
     private final BackupFactory mirrorFactory = new BackupFactory(BackupCommandContext::getMirrorPath);
     private final ConfirmationManager cm = new ConfirmationManager(FibersyncMod::getConfig, 20000, 1000);;
     private final TaskManager taskmgr = new TaskManager();
-    public CountDownTask countDownTask;
+    private CountDownTask countDownTask;
+    private final Supplier<String> levelName;
 
-    private static Path getBackupPath(){
-        return FibersyncMod.getConfig().backupDir;
+    public BackupCommandContext(Supplier<String> levelName){
+        this.levelName = levelName;
+    }
+
+    private Path getBackupPath(){
+        return FibersyncMod.getConfig().backupDir.resolve(levelName.get());
     }
 
     private static Path getMirrorPath(){
@@ -52,5 +59,21 @@ public class BackupCommandContext {
 
     public void endTask() {
         taskmgr.endTask();
+    }
+
+    public CompletableFuture<Boolean> createCountDownTask(IntConsumer onCountDown){
+        countDownTask = new CountDownTask(FibersyncMod.getConfig().defaultCountDown);
+        return countDownTask.run(onCountDown).thenApply(b -> {
+            countDownTask = null;
+            return b;
+        });
+    }
+
+    public boolean hasCountDownTask(){
+        return countDownTask != null;
+    }
+
+    public void cancelCountDownTask(){
+        countDownTask.cancel();
     }
 }

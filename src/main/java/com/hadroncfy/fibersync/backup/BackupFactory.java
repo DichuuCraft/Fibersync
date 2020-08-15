@@ -15,7 +15,6 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.google.gson.JsonParseException;
-import com.hadroncfy.fibersync.util.FileUtil;
 
 public class BackupFactory {
     private final Supplier<Path> dir;
@@ -23,8 +22,8 @@ public class BackupFactory {
         this.dir = dir;
     }
 
-    public BackupEntry getEntry(String levelName, String name){
-        final Path p = dir.get().resolve(levelName).resolve(name);
+    public BackupEntry getEntry(String name){
+        final Path p = dir.get().resolve(name);
         File infoFile = p.resolve("info.json").toFile();
         try {
             if (infoFile.exists()){
@@ -41,12 +40,12 @@ public class BackupFactory {
         }
     }
 
-    public List<BackupEntry> getBackups(String levelName){
+    public List<BackupEntry> getBackups(){
         List<BackupEntry> ret = new ArrayList<>();
-        final String[] names = dir.get().resolve(levelName).toFile().list();
+        final String[] names = dir.get().toFile().list();
         if (names != null){
             for (String name: names){
-                BackupEntry entry = getEntry(levelName, name);
+                BackupEntry entry = getEntry(name);
                 if (entry != null && entry.exists()){
                     ret.add(entry);
                 }
@@ -55,14 +54,14 @@ public class BackupFactory {
         return ret;
     }
 
-    public BackupEntry create(String levelName, String name, String description, UUID creator){
+    public BackupEntry create(String name, String description, UUID creator){
         BackupInfo info = new BackupInfo();
         info.name = name;
         info.description = description;
         info.date = new Date();
         info.creator = creator;
 
-        Path backupEntryDir = dir.get().resolve(levelName).resolve(name);
+        Path backupEntryDir = dir.get().resolve(name);
         return new BackupEntry(backupEntryDir, info);
     }
 

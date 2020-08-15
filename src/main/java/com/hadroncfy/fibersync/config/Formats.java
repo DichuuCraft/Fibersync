@@ -89,6 +89,7 @@ public class Formats {
         .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD)));
     public Text syncStarted = new LiteralText("[Fibersync] 正在同步");
     public Text syncFinished = new LiteralText("[Fibersync] 同步完成");
+    public Text syncFailed = red("[Fibersync] 同步失败：$1");
     public Text syncCountDownTitle = empty().append(new LiteralText("准备同步：").setStyle(new Style().setColor(Formatting.GREEN)))
         .append(new LiteralText("$1").setStyle(new Style().setBold(true)));
 }

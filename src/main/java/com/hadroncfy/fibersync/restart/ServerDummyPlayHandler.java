@@ -119,7 +119,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     @Override
     public void onChatMessage(ChatMessageC2SPacket packet) {
         final String msg = packet.getChatMessage();
-        Text text = new TranslatableText("chat.type.text", new Object[]{player.getEntity().getGameProfile().getName(), msg});
+        Text text = new TranslatableText("chat.type.text", player.getEntity().getGameProfile().getName(), msg);
         // player.getEntity().networkHandler.onChatMessage(packet);
         limbo.broadcast(text);
     }
