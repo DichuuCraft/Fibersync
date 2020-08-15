@@ -9,8 +9,9 @@
       "hadroncfy"
     ],
     "contact": {
-      "homepage": "https://github.com/DichuuCraft/SReplay",
-      "sources": "https://github.com/DichuuCraft/SReplay"
+      "homepage": "https://github.com/DichuuCraft/Fibersync",
+      "sources": "https://github.com/DichuuCraft/Fibersync",
+      "issues": "https://github.com/DichuuCraft/Fibersync/issues"
     },
   
     "license": "MIT",
