@@ -8,9 +8,16 @@ import net.minecraft.text.Text;
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 
 public class SyncTask extends BackTask {
+    private final int mask;
 
-    public SyncTask(ServerCommandSource src, BackupEntry selected) {
+    public SyncTask(ServerCommandSource src, BackupEntry selected, int mask) {
         super(src, selected);
+        this.mask = mask;
+    }
+
+    @Override
+    protected int getMask() {
+        return mask;
     }
     
     @Override

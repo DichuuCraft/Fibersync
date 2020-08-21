@@ -13,6 +13,7 @@ import static net.minecraft.server.command.CommandManager.argument;
 
 import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.backup.BackupEntry;
+import com.hadroncfy.fibersync.backup.BackupExcluder;
 import com.hadroncfy.fibersync.backup.BackupFactory;
 import com.hadroncfy.fibersync.backup.BackupInfo;
 import com.hadroncfy.fibersync.command.task.BackTask;
@@ -70,7 +71,11 @@ public class BackupCommand {
                     .requires(BackupCommand::isMirrorMode)
                     .then(argument(ARG_NAME, StringArgumentType.word())
                         .suggests(BackupCommand::suggestMirrors)
-                        .executes(BackupCommand::sync)))
+                        .executes(BackupCommand::sync)
+                            .then(literal("only") 
+                                .then(argument("only", StringArgumentType.word())
+                                .suggests(BackupCommand::suggestDimOnlys)
+                                .executes(BackupCommand::sync)))))
                 .then(literal("confirm")
                     .then(argument("code", IntegerArgumentType.integer()).executes(BackupCommand::confirm)))
                 .then(literal("cancel").executes(BackupCommand::cancel))
@@ -119,6 +124,19 @@ public class BackupCommand {
         final BackupFactory bf = ((IServer) context.getSource().getMinecraftServer()).getContext().getBackupFactory();
         return suggestMatching(bf.getBackups().stream()
                 .filter(p -> !p.getInfo().locked).map(e -> e.getInfo().name), builder);
+    }
+
+    private static CompletableFuture<Suggestions> suggestDimOnlys(final CommandContext<ServerCommandSource> context,
+            final SuggestionsBuilder builder) throws CommandSyntaxException {
+        String input = StringArgumentType.getString(context, "excludes");
+        DimensionListArgParser parser = new DimensionListArgParser();
+        parser.parse(input);
+
+        for (String w: parser.getSuggestions()){
+            builder.suggest(w);
+        }
+
+        return builder.buildFuture();
     }
 
     private static boolean canLock(ServerCommandSource src) {
@@ -293,7 +311,7 @@ public class BackupCommand {
         return new BackupTask(src, selected, overwrite).run();
     }
 
-    private static int sync(CommandContext<ServerCommandSource> ctx){
+    private static int sync(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
         final BackupCommandContext cctx = ((IServer)server).getContext();
@@ -302,8 +320,18 @@ public class BackupCommand {
             src.sendError(getFormat().backupNotExist);
             return 0;
         }
+        int mask = BackupExcluder.MASK_ALL;
+        try {
+            DimensionListArgParser parser = new DimensionListArgParser();
+            parser.parse(StringArgumentType.getString(ctx, "only"));
+            parser.end();
+            mask = parser.getMask();
+        }
+        catch(IllegalArgumentException e){
+            // ignore
+        }
 
-        return new SyncTask(src, entry).run();
+        return new SyncTask(src, entry, mask).run();
     }
 
     private static int back(CommandContext<ServerCommandSource> ctx){

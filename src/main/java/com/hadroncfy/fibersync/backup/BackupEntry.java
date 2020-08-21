@@ -12,9 +12,14 @@ import java.security.NoSuchAlgorithmException;
 import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.util.FileUtil;
 import com.hadroncfy.fibersync.util.copy.FileCopier;
+import com.hadroncfy.fibersync.util.copy.FileDeleter;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 public class BackupEntry implements Comparable<BackupEntry> {
+    public static final int FLAG_OVERWORLD = 1;
+    public static final int FLAG_NETHER = 2;
+    public static final int FLAG_END = 4;
+
     private static final String WORLDDIR = "world";
     private static final String INFO_JSON = "info.json";
 
@@ -46,7 +51,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
         return dir.resolve(INFO_JSON).toFile().exists() && checkWorldDir();
     }
 
-    public void doBackup(Path worldDir, FileOperationProgressListener listener) throws IOException,
+    public void saveBackup(Path worldDir, FileOperationProgressListener listener) throws IOException,
             NoSuchAlgorithmException {
         File dirFile = dir.toFile();
         if (!dirFile.exists()) {
@@ -58,12 +63,15 @@ public class BackupEntry implements Comparable<BackupEntry> {
             f.mkdirs();
         }
 
-        info.size = FileCopier.copy(worldDir, backupDir, FibersyncMod.getConfig().excludes, listener);
+        info.size = new FileCopier(worldDir, backupDir)
+            .setExclude(FibersyncMod.getConfig().excludes)
+            .setListener(listener)
+            .run();
         writeInfo();
     }
 
     public void delete(FileOperationProgressListener listener) throws IOException {
-        FileCopier.deleteFileTree(dir, listener);
+        new FileDeleter(dir).setListener(listener).run();
     }
 
     public void overwriteTo(BackupEntry entry) throws IOException {
@@ -74,8 +82,11 @@ public class BackupEntry implements Comparable<BackupEntry> {
         }
     }
 
-    public void back(Path worldDir, FileOperationProgressListener listener) throws NoSuchAlgorithmException, IOException {
-        FileCopier.copy(dir.resolve(WORLDDIR), worldDir, FibersyncMod.getConfig().excludes, listener);
+    public void back(Path worldDir, int mask, FileOperationProgressListener listener) throws NoSuchAlgorithmException, IOException {
+        new FileCopier(dir.resolve(WORLDDIR), worldDir)
+            .setExclude(new BackupExcluder(FibersyncMod.getConfig().excludes, mask))
+            .setListener(listener)
+            .run();
     }
 
     @Override
@@ -89,7 +100,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
 
     public void copyTo(BackupEntry other, FileOperationProgressListener listener)
             throws NoSuchAlgorithmException, IOException {
-        other.doBackup(dir.resolve(WORLDDIR), listener);
+        other.saveBackup(dir.resolve(WORLDDIR), listener);
     }
 
     public BackupEntry createAtNewDir(Path dir){

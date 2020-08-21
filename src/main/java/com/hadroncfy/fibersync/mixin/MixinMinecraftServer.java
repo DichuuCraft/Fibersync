@@ -13,6 +13,7 @@ import com.hadroncfy.fibersync.command.BackupCommand;
 import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.config.TextRenderer;
 import com.hadroncfy.fibersync.interfaces.IServer;
+import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
 import com.mojang.datafixers.Dynamic;
 import com.mojang.datafixers.types.JsonOps;
@@ -138,18 +139,19 @@ public abstract class MixinMinecraftServer implements IServer {
         prepareStartRegion(startRegionListener);
     }
 
-    private Runnable reloadCB;
-    private BackupEntry backupEntry;
+    private IReloadListener reloadCB;
 
     private Runnable tickTask;
     private int tickTaskPeriod;
     private int tickBase;
 
     @Override
-    public void reloadAll(BackupEntry entry, Runnable callback) {
+    public void reloadAll(IReloadListener listener){
         if (reloadCB == null) {
-            reloadCB = callback;
-            backupEntry = entry;
+            reloadCB = listener;
+        }
+        else {
+            throw new IllegalStateException("A reloading task is already in progress!");
         }
     }
 
@@ -170,21 +172,16 @@ public abstract class MixinMinecraftServer implements IServer {
             final LevelProperties prop = worlds.get(DimensionType.OVERWORLD).getLevelProperties();
             worlds.clear();
 
-            LOGGER.info("Rolling back");
-            try {
-                backupEntry.back(FibersyncMod.getWorldDir((MinecraftServer) (Object) this),
-                        limbo.getFileCopyListener());
-            } catch (NoSuchAlgorithmException | IOException e) {
-                e.printStackTrace();
-                limbo.broadcast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));
-            }
+            reloadCB.onReload(limbo);
+            
+            LOGGER.info("Reloading");
             scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
             loadWorld(levelName, prop.getLevelName(), prop.getSeed(), prop.getGeneratorType(), Dynamic.convert(NbtOps.INSTANCE, JsonOps.INSTANCE, prop.getGeneratorOptions()), limbo.getWorldGenListener());
             
             reload();
             limbo.end();
 
-            reloadCB.run();
+            reloadCB.onReloadDone();
             reloadCB = null;
         }
     }

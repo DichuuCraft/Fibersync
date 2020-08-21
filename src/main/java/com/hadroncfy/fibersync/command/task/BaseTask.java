@@ -74,7 +74,7 @@ public abstract class BaseTask {
                 Path worldDir = FibersyncMod.getWorldDir(server);
                 LOGGER.info("world dir: {}", worldDir);
 
-                entry.doBackup(worldDir, progressBar);
+                entry.saveBackup(worldDir, progressBar);
                 server.getPlayerManager().broadcastChatMessage(render(getFormat().backupComplete, senderName, name), false);
             } catch (Exception e) {
                 e.printStackTrace();

@@ -5,14 +5,14 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class SimpleFileVisitor implements FileVisitor<Path> {
-    private final Consumer<Path> consumer;
+    private final Function<Path, FileVisitResult> consumer;
     private final boolean rev;
     public long size = 0;
     
-    public SimpleFileVisitor(Consumer<Path> p, boolean rev){
+    public SimpleFileVisitor(Function<Path, FileVisitResult> p, boolean rev){
         consumer = p;
         this.rev = rev;
     }
@@ -20,7 +20,7 @@ public class SimpleFileVisitor implements FileVisitor<Path> {
     @Override
     public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
         if (rev){
-            consumer.accept(dir);
+            return consumer.apply(dir);
         }
         return FileVisitResult.CONTINUE;
     }
@@ -28,14 +28,14 @@ public class SimpleFileVisitor implements FileVisitor<Path> {
     @Override
     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
         if (!rev){
-            consumer.accept(dir);
+            return consumer.apply(dir);
         }
         return FileVisitResult.CONTINUE;
     }
 
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        consumer.accept(file);
+        consumer.apply(file);
         size += file.toFile().length();
         return FileVisitResult.CONTINUE;
     }
