@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class BackupExcluder implements PathMatcher {
+    public static final int MASK_NONE      = 0;
     public static final int MASK_OTHER     = 1;
     public static final int MASK_OVERWORLD = 2;
     public static final int MASK_NETHER    = 4;
@@ -30,17 +31,18 @@ public class BackupExcluder implements PathMatcher {
         if (parent.matches(path)){
             return true;
         }
-        if ((mask & MASK_OVERWORLD) == 0 && OVERWORLD_PATHS.contains(path)){
-            return true;
+        if (OVERWORLD_PATHS.contains(path)){
+            return (mask & MASK_OVERWORLD) != 0;
         }
-        if ((mask & MASK_NETHER) == 0 && NETHER_PATH.equals(path)){
-            return true;
+        else if (NETHER_PATH.equals(path)){
+            return (mask & MASK_NETHER) != 0;
         }
-        if ((mask & MASK_THE_END) == 0 && THE_END_PATH.equals(path)){
-            return true;
+        else if (THE_END_PATH.equals(path)){
+            return (mask & MASK_THE_END) != 0;
         }
-        
-        return false;
+        else {
+            return (mask & MASK_OTHER) != 0;
+        }
     }
 
     

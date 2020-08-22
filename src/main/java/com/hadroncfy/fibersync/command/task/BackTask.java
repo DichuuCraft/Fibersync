@@ -97,15 +97,15 @@ public class BackTask extends BaseTask {
         return getFormat().rollbackFinished;
     }
 
-    protected int getMask(){
-        return BackupExcluder.MASK_ALL;
+    protected int getExcludeMask(){
+        return BackupExcluder.MASK_NONE;
     }
 
     private class ReloadListener implements IReloadListener {
         @Override
         public void onReload(Limbo limbo) {
             try {
-                selected.back(FibersyncMod.getWorldDir(server), getMask(), limbo.getFileCopyListener());
+                selected.back(FibersyncMod.getWorldDir(server), getExcludeMask(), limbo.getFileCopyListener());
             } catch (NoSuchAlgorithmException | IOException e) {
                 e.printStackTrace();
                 limbo.broadcast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));

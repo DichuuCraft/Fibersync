@@ -46,6 +46,9 @@ public abstract class VarArgParser {
                 flags[i] = true;
             }
         }
+        else {
+            throw COMMAND_EXCEPTION.createWithContext(getContext());
+        }
     }
 
     public void parse(IntSupplier source) throws CommandSyntaxException {
@@ -64,6 +67,7 @@ public abstract class VarArgParser {
             }
             else {
                 sb.append((char)c);
+                expectingWord = false;
             }
             c = source.getAsInt();
         }
@@ -87,8 +91,9 @@ public abstract class VarArgParser {
         String s = sb.toString();
         boolean hasEqual = false;
 
-        for (String w: words){
-            if (w.startsWith(s)){
+        for (int i = 0; i < words.length; i++){
+            String w = words[i];
+            if (!flags[i] && w.startsWith(s)){
                 ret.add(w.substring(s.length()));
             }
             if (w.equals(s)){

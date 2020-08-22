@@ -91,7 +91,7 @@ public class FileCopier {
             }
 
             Files.copy(src1, dest1, StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.debug("Copied file(or dir) {} to {}", src1, dest1);
+            LOGGER.debug("Copied file (or dir) {} to {}", src1, dest1);
             
             if (listener != null){
                 listener.onFileDone(src1, src1f.length());
@@ -153,8 +153,10 @@ public class FileCopier {
     private class DestFileVisitor implements FileVisitor<Path> {
         @Override
         public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-            dir = dest.relativize(dir).normalize();
-            destFiles.add(dir);
+            if (!dir.equals(dest)){
+                dir = dest.relativize(dir).normalize();
+                destFiles.add(dir);
+            }
             return FileVisitResult.CONTINUE;
         }
 

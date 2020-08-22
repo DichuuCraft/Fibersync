@@ -15,14 +15,14 @@ public class DimensionListArgParser extends VarArgParser {
 
     @Override
     protected char getDelimiter() {
-        return '|';
+        return '+';
     }
     
     public int getMask(){
-        int mask = 0;
+        int mask = BackupExcluder.MASK_ALL;
         for (int i = 0; i < words.length; i++){
             if (getFlag(i)){
-                mask |= masks[i];
+                mask &= ~masks[i];
             }
         }
         return mask;

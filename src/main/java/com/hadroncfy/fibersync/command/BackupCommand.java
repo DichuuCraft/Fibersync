@@ -127,13 +127,13 @@ public class BackupCommand {
     }
 
     private static CompletableFuture<Suggestions> suggestDimOnlys(final CommandContext<ServerCommandSource> context,
-            final SuggestionsBuilder builder) throws CommandSyntaxException {
-        String input = StringArgumentType.getString(context, "excludes");
+            SuggestionsBuilder builder) throws CommandSyntaxException {
+        String input = builder.getRemaining();
         DimensionListArgParser parser = new DimensionListArgParser();
         parser.parse(input);
-
+        
         for (String w: parser.getSuggestions()){
-            builder.suggest(w);
+            builder.suggest(input + w);
         }
 
         return builder.buildFuture();
@@ -320,7 +320,7 @@ public class BackupCommand {
             src.sendError(getFormat().backupNotExist);
             return 0;
         }
-        int mask = BackupExcluder.MASK_ALL;
+        int mask = BackupExcluder.MASK_NONE;
         try {
             DimensionListArgParser parser = new DimensionListArgParser();
             parser.parse(StringArgumentType.getString(ctx, "only"));

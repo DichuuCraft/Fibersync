@@ -16,7 +16,7 @@ public class SyncTask extends BackTask {
     }
 
     @Override
-    protected int getMask() {
+    protected int getExcludeMask() {
         return mask;
     }
     
