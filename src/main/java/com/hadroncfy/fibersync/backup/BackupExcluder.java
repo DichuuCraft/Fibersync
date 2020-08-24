@@ -18,6 +18,12 @@ public class BackupExcluder implements PathMatcher {
     private static final Path NETHER_PATH = Paths.get("DIM-1");
     private static final Path THE_END_PATH = Paths.get("DIM1");
 
+    static {
+        OVERWORLD_PATHS.add(Paths.get("region"));
+        OVERWORLD_PATHS.add(Paths.get("poi"));
+        OVERWORLD_PATHS.add(Paths.get("data"));
+    }
+
     private final PathMatcher parent;
     private final int mask;
 
@@ -31,18 +37,23 @@ public class BackupExcluder implements PathMatcher {
         if (parent.matches(path)){
             return true;
         }
-        if (OVERWORLD_PATHS.contains(path)){
-            return (mask & MASK_OVERWORLD) != 0;
+        if (path.getNameCount() > 0){
+            Path p2 = path.getName(0);
+
+            if (OVERWORLD_PATHS.contains(p2)){
+                return (mask & MASK_OVERWORLD) != 0;
+            }
+            else if (NETHER_PATH.equals(p2)){
+                return (mask & MASK_NETHER) != 0;
+            }
+            else if (THE_END_PATH.equals(p2)){
+                return (mask & MASK_THE_END) != 0;
+            }
+            else {
+                return (mask & MASK_OTHER) != 0;
+            }
         }
-        else if (NETHER_PATH.equals(path)){
-            return (mask & MASK_NETHER) != 0;
-        }
-        else if (THE_END_PATH.equals(path)){
-            return (mask & MASK_THE_END) != 0;
-        }
-        else {
-            return (mask & MASK_OTHER) != 0;
-        }
+        return false;
     }
 
     

@@ -32,7 +32,10 @@ public class ConfirmationManager {
 
     public synchronized void submit(String label, ServerCommandSource sender, ConfirmationHandler h){
         int code = random.nextInt(confirmCodeBound);
-        confirms.put(label, new ConfirmationEntry(label, sender, code, h));
+        ConfirmationEntry entry = confirms.put(label, new ConfirmationEntry(label, sender, code, h));
+        if (entry != null){
+            entry.cancel();
+        }
         sender.sendFeedback(render(getFormat().confirmationHint, Integer.toString(code)), false);
     }
 

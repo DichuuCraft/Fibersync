@@ -2,16 +2,11 @@ package com.hadroncfy.fibersync.mixin;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 
 import com.google.gson.JsonElement;
-import com.hadroncfy.fibersync.FibersyncMod;
-import com.hadroncfy.fibersync.backup.BackupEntry;
-import com.hadroncfy.fibersync.command.BackupCommand;
 import com.hadroncfy.fibersync.command.BackupCommandContext;
-import com.hadroncfy.fibersync.config.TextRenderer;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;

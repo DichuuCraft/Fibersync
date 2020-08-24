@@ -63,7 +63,7 @@ public class BackupCommand {
                 .then(literal("make")
                     .executes(BackupCommand::create)
                         .then(argument(ARG_DESC, MessageArgumentType.message()).executes(BackupCommand::create)))
-                .then(literal("back")
+                .then(literal("back").executes(BackupCommand::back)
                     .then(argument(ARG_NAME, StringArgumentType.word())
                         .suggests(BackupCommand::suggestBackups)
                         .executes(BackupCommand::back)))
