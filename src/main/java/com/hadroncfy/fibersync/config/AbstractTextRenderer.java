@@ -3,15 +3,16 @@ package com.hadroncfy.fibersync.config;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.LiteralText;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
 
 public abstract class AbstractTextRenderer<C> {
-    protected abstract Text renderString(String s);
+    protected abstract MutableText renderString(String s);
     
     public Text render(C ctx, Text template){
-        Text ret;
+        MutableText ret;
         if (template instanceof LiteralText){
             ret = renderString(((LiteralText) template).getRawString());
         }
@@ -42,21 +43,22 @@ public abstract class AbstractTextRenderer<C> {
     }
 
     private Style renderStyle(C ctx, Style style){
-        Style ret = style.deepCopy();
+        Style ret = style;
 
         HoverEvent h = style.getHoverEvent();
-        if (h != null){
-            ret.setHoverEvent(new HoverEvent(h.getAction(), render(ctx, h.getValue())));
+        if (h != null && h.getAction() == HoverEvent.Action.SHOW_TEXT){
+            Text content = h.getValue(HoverEvent.Action.SHOW_TEXT);
+            ret = ret.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, renderString(content.asString())));
         }
 
         ClickEvent c = style.getClickEvent();
         if (c != null){
-            ret.setClickEvent(new ClickEvent(c.getAction(), renderString(c.getValue()).asString()));
+            ret = ret.withClickEvent(new ClickEvent(c.getAction(), renderString(c.getValue()).asString()));
         }
 
         String i = style.getInsertion();
         if (i != null){
-            ret.setInsertion(renderString(i).asString());
+            ret = ret.withInsertion(renderString(i).asString());
         }
 
         return ret;

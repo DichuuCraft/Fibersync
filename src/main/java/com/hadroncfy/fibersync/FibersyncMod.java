@@ -45,10 +45,6 @@ public class FibersyncMod implements ModInitializer {
         }
     }
 
-    public static Path getWorldDir(MinecraftServer server) {
-        return ((LevelStorageAccessor) server.getLevelStorage()).getSavesDir().resolve(server.getLevelName());
-    }
-
     @Override
     public void onInitialize() {
         try {

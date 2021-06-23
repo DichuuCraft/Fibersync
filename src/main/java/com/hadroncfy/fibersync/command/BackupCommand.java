@@ -2,7 +2,6 @@ package com.hadroncfy.fibersync.command;
 
 import static net.minecraft.server.command.CommandManager.literal;
 
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +19,6 @@ import com.hadroncfy.fibersync.command.task.BackTask;
 import com.hadroncfy.fibersync.command.task.BackupTask;
 import com.hadroncfy.fibersync.command.task.SyncTask;
 import com.hadroncfy.fibersync.interfaces.IServer;
-import com.hadroncfy.fibersync.mixin.LevelStorageAccessor;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -32,12 +30,12 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import net.minecraft.command.arguments.MessageArgumentType;
+import net.minecraft.command.argument.MessageArgumentType;
+import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 
-import static net.minecraft.server.command.CommandSource.suggestMatching;
+import static net.minecraft.command.CommandSource.suggestMatching;
 
 import static com.hadroncfy.fibersync.config.TextRenderer.render;
 
@@ -171,7 +169,7 @@ public class BackupCommand {
         if (cctx.hasCountDownTask()) {
             cctx.cancelCountDownTask();
             src.getMinecraftServer().getPlayerManager()
-                    .broadcastChatMessage(render(getFormat().rollbackAborted, src.getName()), false);
+                    .broadcastChatMessage(render(getFormat().rollbackAborted, src.getName()), MessageType.GAME_INFO, getSourceUUID(ctx));
             return 0;
         } else {
             if (!cctx.getConfirmationManager().cancel(ctx.getSource().getName())) {
@@ -182,17 +180,13 @@ public class BackupCommand {
         }
     }
 
-    private static UUID getSourceUUID(CommandContext<ServerCommandSource> ctx) {
+    public static UUID getSourceUUID(CommandContext<ServerCommandSource> ctx) {
         try {
             return ctx.getSource().getPlayer().getUuid();
         } catch (CommandSyntaxException e) {
             //
             return BackupInfo.CONSOLE_UUID;
         }
-    }
-
-    public static Path getWorldDir(MinecraftServer server) {
-        return ((LevelStorageAccessor) server.getLevelStorage()).getSavesDir().resolve(server.getLevelName());
     }
 
     private static int delete(CommandContext<ServerCommandSource> ctx) {
@@ -214,15 +208,15 @@ public class BackupCommand {
                 final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().deletingBackupTitle, b.getInfo().name));
                 try {
                     server.getPlayerManager().broadcastChatMessage(
-                            render(getFormat().deletingBackup, src.getName(), b.getInfo().name), false);
+                        render(getFormat().deletingBackup, src.getName(), b.getInfo().name), MessageType.GAME_INFO, getSourceUUID(ctx));
                     b.delete(progressBar);
                     server.getPlayerManager().broadcastChatMessage(
-                            render(getFormat().deletedBackup, src.getName(), b.getInfo().name), false);
+                        render(getFormat().deletedBackup, src.getName(), b.getInfo().name), MessageType.GAME_INFO, getSourceUUID(ctx));
                 } catch (Exception e) {
                     e.printStackTrace();
                     server.getPlayerManager().broadcastChatMessage(
-                            render(getFormat().failedToDeletedBackup, src.getName(), b.getInfo().name, e.toString()),
-                            false);
+                        render(getFormat().failedToDeletedBackup, src.getName(), b.getInfo().name, e.toString()),
+                    MessageType.GAME_INFO, getSourceUUID(ctx));
                 } finally {
                     progressBar.done();
                     cctx.endTask();
@@ -247,11 +241,11 @@ public class BackupCommand {
                 entry.writeInfo();
                 server.getPlayerManager()
                         .broadcastChatMessage(render(locked ? getFormat().lockedBackup : getFormat().unlockedBackup,
-                                src.getName(), entry.getInfo().name), false);
+                                src.getName(), entry.getInfo().name), MessageType.GAME_INFO, getSourceUUID(ctx));
             } catch (Exception e) {
                 e.printStackTrace();
                 server.getPlayerManager().broadcastChatMessage(
-                        render(getFormat().failedToWriteInfo, src.getName(), e.toString()), false);
+                        render(getFormat().failedToWriteInfo, src.getName(), e.toString()), MessageType.GAME_INFO, getSourceUUID(ctx));
             } finally {
                 cctx.endTask();
             }

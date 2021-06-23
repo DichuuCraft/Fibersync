@@ -9,9 +9,11 @@ import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
 
+import net.minecraft.network.MessageType;
 import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
+import net.minecraft.util.WorldSavePath;
 
 import static com.hadroncfy.fibersync.FibersyncMod.getConfig;
 import static com.hadroncfy.fibersync.config.TextRenderer.render;
@@ -38,7 +40,7 @@ public class BackTask extends BaseTask {
 
     private void startBack(Boolean b) {
         if (b) {
-            server.getPlayerManager().broadcastChatMessage(getStartedText(), true);
+            server.getPlayerManager().broadcastChatMessage(getStartedText(), MessageType.GAME_INFO, getSourceUUID(this.src));
             ((IServer) server).reloadAll(new ReloadListener());
         } else {
             cctx.endTask();
@@ -55,7 +57,7 @@ public class BackTask extends BaseTask {
     private void runBackTask(ServerCommandSource dummy) {
         if (cctx.tryBeginTask(src)) {
             server.getPlayerManager()
-                    .broadcastChatMessage(render(getStartAlertText(), src.getName(), selected.getInfo().name), true);
+                    .broadcastChatMessage(render(getStartAlertText(), src.getName(), selected.getInfo().name),  MessageType.GAME_INFO, getSourceUUID(this.src));
 
             autoBackup = currentWorld;
             if (selected.collides(currentWorld)) {
@@ -65,7 +67,8 @@ public class BackTask extends BaseTask {
 
             doBackup(autoBackup).thenRun(this::prepareToBack).exceptionally(e -> {
                 server.getPlayerManager().broadcastChatMessage(render(getFailedText(), src.getName(), e.toString()),
-                        false);
+                    MessageType.GAME_INFO, getSourceUUID(this.src)
+                );
                 cctx.endTask();
                 return null;
             });
@@ -105,7 +108,7 @@ public class BackTask extends BaseTask {
         @Override
         public void onReload(Limbo limbo) {
             try {
-                selected.back(FibersyncMod.getWorldDir(server), getExcludeMask(), limbo.getFileCopyListener());
+                selected.back(server.getSavePath(WorldSavePath.ROOT), getExcludeMask(), limbo.getFileCopyListener());
             } catch (NoSuchAlgorithmException | IOException e) {
                 e.printStackTrace();
                 limbo.broadcast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));
@@ -115,17 +118,17 @@ public class BackTask extends BaseTask {
 
         @Override
         public void onReloadDone() {
-            server.getPlayerManager().broadcastChatMessage(getFinishedText(), true);
+            server.getPlayerManager().broadcastChatMessage(getFinishedText(), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
             if (autoBackup != currentWorld){
                 LOGGER.info("Copying file back from temp dir");
                 CompletableFuture.runAsync(() -> {
                     FileOperationProgressBar progressBar = new FileOperationProgressBar(server, getFormat().fileCopyBarTitle);
                     try {
                         autoBackup.copyTo(currentWorld, progressBar);
-                        server.getPlayerManager().broadcastChatMessage(getFormat().copiedFromTempDir, false);
+                        server.getPlayerManager().broadcastChatMessage(getFormat().copiedFromTempDir, MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
                     } catch (Exception e1) {
                         e1.printStackTrace();
-                        server.getPlayerManager().broadcastChatMessage(render(getFormat().failedToCopyFromTempDir, e1.toString()), false);
+                        server.getPlayerManager().broadcastChatMessage(render(getFormat().failedToCopyFromTempDir, e1.toString()), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
                     }
                     finally {
                         progressBar.done();

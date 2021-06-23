@@ -11,16 +11,17 @@ import net.minecraft.network.packet.c2s.play.BoatPaddleStateC2SPacket;
 import net.minecraft.network.packet.c2s.play.BookUpdateC2SPacket;
 import net.minecraft.network.packet.c2s.play.ButtonClickC2SPacket;
 import net.minecraft.network.packet.c2s.play.ChatMessageC2SPacket;
-import net.minecraft.network.packet.c2s.play.ClickWindowC2SPacket;
+import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
-import net.minecraft.network.packet.c2s.play.ConfirmGuiActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
+import net.minecraft.network.packet.c2s.play.ConfirmScreenActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.CraftRequestC2SPacket;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
-import net.minecraft.network.packet.c2s.play.GuiCloseC2SPacket;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
+import net.minecraft.network.packet.c2s.play.JigsawGeneratingC2SPacket;
 import net.minecraft.network.packet.c2s.play.KeepAliveC2SPacket;
 import net.minecraft.network.packet.c2s.play.PickFromInventoryC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
@@ -32,10 +33,11 @@ import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.c2s.play.QueryBlockNbtC2SPacket;
 import net.minecraft.network.packet.c2s.play.QueryEntityNbtC2SPacket;
 import net.minecraft.network.packet.c2s.play.RecipeBookDataC2SPacket;
+import net.minecraft.network.packet.c2s.play.RecipeCategoryOptionsC2SPacket;
 import net.minecraft.network.packet.c2s.play.RenameItemC2SPacket;
 import net.minecraft.network.packet.c2s.play.RequestCommandCompletionsC2SPacket;
 import net.minecraft.network.packet.c2s.play.ResourcePackStatusC2SPacket;
-import net.minecraft.network.packet.c2s.play.SelectVillagerTradeC2SPacket;
+import net.minecraft.network.packet.c2s.play.SelectMerchantTradeC2SPacket;
 import net.minecraft.network.packet.c2s.play.SpectatorTeleportC2SPacket;
 import net.minecraft.network.packet.c2s.play.TeleportConfirmC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateBeaconC2SPacket;
@@ -117,7 +119,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onChatMessage(ChatMessageC2SPacket packet) {
+    public void onGameMessage(ChatMessageC2SPacket packet) {
         final String msg = packet.getChatMessage();
         Text text = new TranslatableText("chat.type.text", player.getEntity().getGameProfile().getName(), msg);
         // player.getEntity().networkHandler.onChatMessage(packet);
@@ -137,7 +139,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onConfirmTransaction(ConfirmGuiActionC2SPacket packet) {
+    public void onConfirmScreenAction(ConfirmScreenActionC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -149,7 +151,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onClickWindow(ClickWindowC2SPacket packet) {
+    public void onClickSlot(ClickSlotC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -161,7 +163,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onGuiClose(GuiCloseC2SPacket packet) {
+    public void onCloseHandledScreen(CloseHandledScreenC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -182,7 +184,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     public void onKeepAlive(KeepAliveC2SPacket packet) {
         if (this.waitingForKeepAlive && packet.getId() == this.keepAliveId) {
             this.waitingForKeepAlive = false;
-         } else if (!limbo.getServer().isOwner(player.getEntity().getGameProfile())) {
+         } else if (!limbo.getServer().isHost(player.getEntity().getGameProfile())) {
             this.disconnect(new TranslatableText("disconnect.timeout", new Object[0]));
          }
     }
@@ -332,7 +334,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onVillagerTradeSelect(SelectVillagerTradeC2SPacket packet) {
+    public void onMerchantTradeSelect(SelectMerchantTradeC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -371,6 +373,18 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     public void onUpdateDifficultyLock(UpdateDifficultyLockC2SPacket packet) {
         // TODO Auto-generated method stub
 
+    }
+
+    @Override
+    public void onJigsawGenerating(JigsawGeneratingC2SPacket packet) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void onRecipeCategoryOptions(RecipeCategoryOptionsC2SPacket packet) {
+        // TODO Auto-generated method stub
+        
     }
 
 }

@@ -19,6 +19,11 @@ import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.stat.ServerStatHandler;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
+import net.minecraft.world.GameMode;
+import net.minecraft.world.World;
+import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.dimension.DimensionType;
 
 @Mixin(PlayerManager.class)
@@ -39,12 +44,33 @@ public class MixinPlayerManager implements IPlayerManager {
     ))
     private void onSendGameJoin(ClientConnection connection, ServerPlayerEntity player, CallbackInfo ci){
         if (shouldRefreshScreen){
-            DimensionType dType = player.dimension == DimensionType.OVERWORLD ? DimensionType.THE_NETHER : DimensionType.OVERWORLD;
-            
+            RegistryKey<World> dimensionKey = player.getServerWorld().getRegistryKey();
+            RegistryKey<World> dKey = dimensionKey == World.OVERWORLD ? World.NETHER : World.OVERWORLD;
+            DimensionType dType = player.getServerWorld().getDimension();
+            GameMode gmode = player.interactionManager.getGameMode();
+
             // Send these two packets to prevent the client from being stuck in the downloading terrain screen
             // https://github.com/VelocityPowered/Velocity/blob/master/proxy/src/main/java/com/velocitypowered/proxy/connection/backend/TransitionSessionHandler.java
-            connection.send(new PlayerRespawnS2CPacket(dType, player.world.getGeneratorType(), player.interactionManager.getGameMode()));
-            connection.send(new PlayerRespawnS2CPacket(player.dimension, player.world.getGeneratorType(), player.interactionManager.getGameMode()));
+            connection.send(new PlayerRespawnS2CPacket(
+                dType,
+                dKey,
+                0,
+                gmode,
+                gmode,
+                false,
+                false,
+                true
+            ));
+            connection.send(new PlayerRespawnS2CPacket(
+                dType,
+                dimensionKey,
+                BiomeAccess.hashSeed(player.getServerWorld().getSeed()),
+                gmode,
+                gmode,
+                player.getServerWorld().isDebugWorld(),
+                player.getServerWorld().isFlat(),
+                true
+            ));
         }
     }
 

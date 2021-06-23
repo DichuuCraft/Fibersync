@@ -16,9 +16,11 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.WorldSavePath;
 
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 import static com.hadroncfy.fibersync.config.TextRenderer.render;
@@ -67,18 +69,18 @@ public abstract class BaseTask {
 
         String name = entry.getInfo().name;
         String senderName = src.getName();
-        server.getPlayerManager().broadcastChatMessage(render(getFormat().creatingBackup, senderName, name), false);
+        server.getPlayerManager().broadcastChatMessage(render(getFormat().creatingBackup, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
         return CompletableFuture.runAsync(() -> {
             final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().creatingBackupTitle, entry.getInfo().name));
             try {
-                Path worldDir = FibersyncMod.getWorldDir(server);
+                Path worldDir = server.getSavePath(WorldSavePath.ROOT);
                 LOGGER.info("world dir: {}", worldDir);
 
                 entry.saveBackup(worldDir, progressBar);
-                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupComplete, senderName, name), false);
+                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupComplete, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
             } catch (Exception e) {
                 e.printStackTrace();
-                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, senderName, e), false);
+                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
                 throw new CompletionException(e);
             } finally {
                 setAutosave(server, autosave);

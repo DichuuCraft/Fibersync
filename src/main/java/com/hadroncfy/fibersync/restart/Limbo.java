@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 
 import com.hadroncfy.fibersync.interfaces.IPlayer;
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
@@ -16,8 +17,8 @@ import org.apache.logging.log4j.Logger;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.MessageType;
 import net.minecraft.network.Packet;
-import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
@@ -25,8 +26,8 @@ import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.world.dimension.DimensionType;
-import net.minecraft.world.level.LevelGeneratorType;
+import net.minecraft.util.registry.DynamicRegistryManager.Impl;
+import net.minecraft.world.World;
 
 public class Limbo implements Runnable {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -66,7 +67,20 @@ public class Limbo implements Runnable {
         AwaitingPlayer p = new AwaitingPlayer(this, player, connection);
         
         if (sendJoin){
-            connection.send(new GameJoinS2CPacket(player.getEntityId(), player.interactionManager.getGameMode(), false, DimensionType.OVERWORLD, 20, LevelGeneratorType.DEFAULT, 10, true));
+            connection.send(new GameJoinS2CPacket(
+                player.getEntityId(), 
+                player.interactionManager.getGameMode(), 
+                player.interactionManager.getPreviousGameMode(),
+                0,
+                false,
+                this.server.getWorldRegistryKeys(),
+                (Impl) this.server.getRegistryManager(), 
+                player.getServerWorld().getDimension(),
+                player.getServerWorld().getRegistryKey(),
+                20, 
+                10, 
+                false, false, false, false
+            ));
         }
         connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0));
         rollBackProgressListener.onPlayerConnected(p);
@@ -82,7 +96,7 @@ public class Limbo implements Runnable {
     public void end() {
         final PlayerManager playerManager = server.getPlayerManager();
         final IPlayerManager pm = (IPlayerManager) playerManager;
-        final ServerWorld dummy = server.getWorld(DimensionType.OVERWORLD);
+        final ServerWorld dummy = server.getWorld(World.OVERWORLD);
 
         running = false;
         try {
@@ -128,7 +142,7 @@ public class Limbo implements Runnable {
     }
 
     public void broadcast(Text txt){
-        sendToAll(new ChatMessageS2CPacket(txt, MessageType.CHAT));
+        sendToAll(new GameMessageS2CPacket(txt, MessageType.CHAT, new UUID(0, 0)));
     }
 
     public void tick() {

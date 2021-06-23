@@ -7,6 +7,6 @@ import net.minecraft.world.WorldSaveHandler;
 
 @Mixin(WorldSaveHandler.class)
 public interface WorldSaveHandlerAccessor {
-    @Accessor("worldName")
-    String getWorldName();
+    // @Accessor("worldName")
+    // String getWorldName();
 }

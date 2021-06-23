@@ -4,6 +4,7 @@ import com.hadroncfy.fibersync.backup.BackupEntry;
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 import static com.hadroncfy.fibersync.config.TextRenderer.render;
 
+import net.minecraft.network.MessageType;
 import net.minecraft.server.command.ServerCommandSource;
 
 public class BackupTask extends BaseTask {
@@ -29,7 +30,7 @@ public class BackupTask extends BaseTask {
                 });
             } catch(Exception e){
                 e.printStackTrace();
-                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, senderName, e), false);
+                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
             } finally {
                 cctx.endTask();
             }

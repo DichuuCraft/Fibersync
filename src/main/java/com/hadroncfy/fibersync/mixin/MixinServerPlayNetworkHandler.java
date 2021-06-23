@@ -23,13 +23,12 @@ public class MixinServerPlayNetworkHandler {
     @Shadow
     public ServerPlayerEntity player;
     
-    @Inject(method = "onChatMessage", at = @At(
+    @Inject(method = "method_31286", at = @At(
         value = "INVOKE",
-        target = "Lnet/minecraft/server/PlayerManager;broadcastChatMessage(Lnet/minecraft/text/Text;Z)V",
+        target = "Lnet/minecraft/server/PlayerManager;broadcastChatMessage(Lnet/minecraft/text/Text;Lnet/minecraft/network/MessageType;Ljava/util/UUID;)V",
         shift = At.Shift.AFTER
     ))
-    private void onChat(ChatMessageC2SPacket packet, CallbackInfo ci){
-        String msg = packet.getChatMessage();
+    private void onChat(String msg, CallbackInfo ci){
         Matcher m = PREFIX.matcher(msg);
         if (m.find()){
             String prefix = m.group();

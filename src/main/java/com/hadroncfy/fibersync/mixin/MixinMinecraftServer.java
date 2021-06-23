@@ -1,17 +1,13 @@
 package com.hadroncfy.fibersync.mixin;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 
-import com.google.gson.JsonElement;
 import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
-import com.mojang.datafixers.Dynamic;
-import com.mojang.datafixers.types.JsonOps;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,21 +18,13 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import net.minecraft.datafixer.NbtOps;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.PlayerManager;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.Difficulty;
-import net.minecraft.world.GameMode;
-import net.minecraft.world.WorldSaveHandler;
 import net.minecraft.world.dimension.DimensionType;
-import net.minecraft.world.level.LevelGeneratorType;
-import net.minecraft.world.level.LevelInfo;
-import net.minecraft.world.level.LevelProperties;
 import net.minecraft.world.level.storage.LevelStorage;
 
 @Mixin(MinecraftServer.class)
@@ -44,93 +32,41 @@ public abstract class MixinMinecraftServer implements IServer {
     private static final Logger LOGGER = LogManager.getLogger();
     @Shadow @Final
     protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
-    @Shadow @Final
-    private String levelName;
-    @Shadow @Final
-    private LevelStorage levelStorage;
-    @Shadow
-    private boolean bonusChest;
+
     @Shadow @Final
     private Map<DimensionType, ServerWorld> worlds;
 
     @Shadow
-    public abstract PlayerManager getPlayerManager();
+    public abstract void prepareStartRegion(WorldGenerationProgressListener worldGenerationProgressListener);
 
     @Shadow
-    protected abstract void upgradeWorld(String string);
+    protected abstract void createWorlds(WorldGenerationProgressListener worldGenerationProgressListener);
 
     @Shadow
-    protected abstract void createWorlds(WorldSaveHandler worldSaveHandler, LevelProperties properties,
-            LevelInfo levelInfo, WorldGenerationProgressListener worldGenerationProgressListener);
+    protected abstract void method_27731(); // setDifficulty
+
+    @Shadow @Final
+    protected LevelStorage.Session session;
 
     @Shadow
-    protected abstract void prepareStartRegion(WorldGenerationProgressListener worldGenerationProgressListener);
-
-    @Shadow
-    protected abstract void loadWorldResourcePack(String worldName, WorldSaveHandler worldSaveHandler);
-
-    @Shadow
-    public abstract boolean isDemo();
-
-    @Shadow
-    public abstract GameMode getDefaultGameMode();
-
-    @Shadow
-    public abstract boolean shouldGenerateStructures();
-
-    @Shadow
-    public abstract boolean isHardcore();
-
-    @Shadow
-    protected abstract void loadWorldDataPacks(File worldDir, LevelProperties levelProperties);
-
-    @Shadow
-    public abstract void reload();
-
-    @Shadow
-    public abstract Difficulty getDefaultDifficulty();
-
-    @Shadow
-    public abstract void setDifficulty(Difficulty difficulty, boolean bl);
+    protected abstract void loadWorldResourcePack();
 
     @Shadow
     private int ticks;
 
     @Shadow
-    private boolean running;
+    private volatile boolean running;
 
     @Shadow @Mutable
     private ServerScoreboard scoreboard;
 
-    private BackupCommandContext commandContext = new BackupCommandContext(() -> levelName);
+    private BackupCommandContext commandContext = new BackupCommandContext(() -> this.session.getDirectoryName());
 
-    private void loadWorld(String name, String serverName, long seed, LevelGeneratorType generatorType,
-            JsonElement generatorSettings, WorldGenerationProgressListener startRegionListener) {
-        upgradeWorld(name);
-        WorldSaveHandler worldSaveHandler = levelStorage.createSaveHandler(name, (MinecraftServer) (Object) this);
-        loadWorldResourcePack(levelName, worldSaveHandler);
-        LevelProperties levelProperties = worldSaveHandler.readProperties();
-        LevelInfo levelInfo2;
-        if (levelProperties == null) {
-            if (isDemo()) {
-                levelInfo2 = MinecraftServer.DEMO_LEVEL_INFO;
-            } else {
-                levelInfo2 = new LevelInfo(seed, getDefaultGameMode(), shouldGenerateStructures(), this.isHardcore(),
-                        generatorType);
-                levelInfo2.setGeneratorOptions(generatorSettings);
-                if (bonusChest) {
-                    levelInfo2.setBonusChest();
-                }
-            }
-
-            levelProperties = new LevelProperties(levelInfo2, serverName);
-        } else {
-            levelProperties.setLevelName(serverName);
-            levelInfo2 = new LevelInfo(levelProperties);
-        }
-
-        createWorlds(worldSaveHandler, levelProperties, levelInfo2, startRegionListener);
-        setDifficulty(getDefaultDifficulty(), true);
+    // cannot directly call original loadWorld since other mods might mixin into this method
+    private void loadWorld(WorldGenerationProgressListener startRegionListener) {
+        this.loadWorldResourcePack();
+        createWorlds(startRegionListener);
+        method_27731();
         prepareStartRegion(startRegionListener);
     }
 
@@ -164,16 +100,14 @@ public abstract class MixinMinecraftServer implements IServer {
                     e.printStackTrace();
                 }
             }
-            final LevelProperties prop = worlds.get(DimensionType.OVERWORLD).getLevelProperties();
             worlds.clear();
 
             reloadCB.onReload(limbo);
             
             LOGGER.info("Reloading");
             scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
-            loadWorld(levelName, prop.getLevelName(), prop.getSeed(), prop.getGeneratorType(), Dynamic.convert(NbtOps.INSTANCE, JsonOps.INSTANCE, prop.getGeneratorOptions()), limbo.getWorldGenListener());
+            loadWorld(limbo.getWorldGenListener());
             
-            reload();
             limbo.end();
 
             reloadCB.onReloadDone();
