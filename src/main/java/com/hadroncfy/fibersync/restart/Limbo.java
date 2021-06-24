@@ -96,7 +96,7 @@ public class Limbo implements Runnable {
     public void end() {
         final PlayerManager playerManager = server.getPlayerManager();
         final IPlayerManager pm = (IPlayerManager) playerManager;
-        final ServerWorld dummy = server.getWorld(World.OVERWORLD);
+        final ServerWorld dummy = server.getOverworld();
 
         running = false;
         try {

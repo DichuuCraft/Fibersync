@@ -169,7 +169,7 @@ public class BackupCommand {
         if (cctx.hasCountDownTask()) {
             cctx.cancelCountDownTask();
             src.getMinecraftServer().getPlayerManager()
-                    .broadcastChatMessage(render(getFormat().rollbackAborted, src.getName()), MessageType.GAME_INFO, getSourceUUID(ctx));
+                    .broadcastChatMessage(render(getFormat().rollbackAborted, src.getName()), MessageType.CHAT, getSourceUUID(ctx));
             return 0;
         } else {
             if (!cctx.getConfirmationManager().cancel(ctx.getSource().getName())) {
@@ -208,15 +208,15 @@ public class BackupCommand {
                 final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().deletingBackupTitle, b.getInfo().name));
                 try {
                     server.getPlayerManager().broadcastChatMessage(
-                        render(getFormat().deletingBackup, src.getName(), b.getInfo().name), MessageType.GAME_INFO, getSourceUUID(ctx));
+                        render(getFormat().deletingBackup, src.getName(), b.getInfo().name), MessageType.CHAT, getSourceUUID(ctx));
                     b.delete(progressBar);
                     server.getPlayerManager().broadcastChatMessage(
-                        render(getFormat().deletedBackup, src.getName(), b.getInfo().name), MessageType.GAME_INFO, getSourceUUID(ctx));
+                        render(getFormat().deletedBackup, src.getName(), b.getInfo().name), MessageType.CHAT, getSourceUUID(ctx));
                 } catch (Exception e) {
                     e.printStackTrace();
                     server.getPlayerManager().broadcastChatMessage(
                         render(getFormat().failedToDeletedBackup, src.getName(), b.getInfo().name, e.toString()),
-                    MessageType.GAME_INFO, getSourceUUID(ctx));
+                    MessageType.CHAT, getSourceUUID(ctx));
                 } finally {
                     progressBar.done();
                     cctx.endTask();
@@ -241,11 +241,11 @@ public class BackupCommand {
                 entry.writeInfo();
                 server.getPlayerManager()
                         .broadcastChatMessage(render(locked ? getFormat().lockedBackup : getFormat().unlockedBackup,
-                                src.getName(), entry.getInfo().name), MessageType.GAME_INFO, getSourceUUID(ctx));
+                                src.getName(), entry.getInfo().name), MessageType.CHAT, getSourceUUID(ctx));
             } catch (Exception e) {
                 e.printStackTrace();
                 server.getPlayerManager().broadcastChatMessage(
-                        render(getFormat().failedToWriteInfo, src.getName(), e.toString()), MessageType.GAME_INFO, getSourceUUID(ctx));
+                        render(getFormat().failedToWriteInfo, src.getName(), e.toString()), MessageType.CHAT, getSourceUUID(ctx));
             } finally {
                 cctx.endTask();
             }

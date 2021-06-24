@@ -20,6 +20,7 @@ import static com.hadroncfy.fibersync.config.TextRenderer.render;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
@@ -40,7 +41,7 @@ public class BackTask extends BaseTask {
 
     private void startBack(Boolean b) {
         if (b) {
-            server.getPlayerManager().broadcastChatMessage(getStartedText(), MessageType.GAME_INFO, getSourceUUID(this.src));
+            server.getPlayerManager().broadcastChatMessage(getStartedText(), MessageType.CHAT, getSourceUUID(this.src));
             ((IServer) server).reloadAll(new ReloadListener());
         } else {
             cctx.endTask();
@@ -50,14 +51,14 @@ public class BackTask extends BaseTask {
     private void prepareToBack() {
         cctx.createCountDownTask(i -> {
             Text txt = render(getCountDownTitleText(), Integer.toString(i));
-            server.getPlayerManager().sendToAll(new TitleS2CPacket(TitleS2CPacket.Action.ACTIONBAR, txt, 10, 10, -1));
+            server.getPlayerManager().broadcastChatMessage(txt, MessageType.GAME_INFO, new UUID(0, 0));
         }).thenAccept(this::startBack);
     }
 
     private void runBackTask(ServerCommandSource dummy) {
         if (cctx.tryBeginTask(src)) {
             server.getPlayerManager()
-                    .broadcastChatMessage(render(getStartAlertText(), src.getName(), selected.getInfo().name),  MessageType.GAME_INFO, getSourceUUID(this.src));
+                    .broadcastChatMessage(render(getStartAlertText(), src.getName(), selected.getInfo().name),  MessageType.CHAT, getSourceUUID(this.src));
 
             autoBackup = currentWorld;
             if (selected.collides(currentWorld)) {
@@ -67,7 +68,7 @@ public class BackTask extends BaseTask {
 
             doBackup(autoBackup).thenRun(this::prepareToBack).exceptionally(e -> {
                 server.getPlayerManager().broadcastChatMessage(render(getFailedText(), src.getName(), e.toString()),
-                    MessageType.GAME_INFO, getSourceUUID(this.src)
+                    MessageType.CHAT, getSourceUUID(this.src)
                 );
                 cctx.endTask();
                 return null;
