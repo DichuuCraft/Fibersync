@@ -4,8 +4,9 @@
 name: Release Builds
 
 on:
-  release:
-    type: [published]
+  push:
+    tags:
+    - 'v*'
 
 jobs:
   Build-And-Publish:
@@ -38,12 +39,9 @@ jobs:
       run: |
         output="$(find build/libs/ ! -name "*-dev.jar" ! -name "*-sources.jar" -type f -printf "%f\n")"
         echo "::set-output name=jarname::$output"
-    - name: Upload to the Github release
-      uses: actions/upload-release-asset@v1
+    - name: Create Github release
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: build/libs/${{ steps.findjar.outputs.jarname }}
-        asset_name: ${{ steps.findjar.outputs.jarname }}
-        asset_content_type: application/java-archive
+        files: build/libs/${{ steps.findjar.outputs.jarname }}
