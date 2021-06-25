@@ -14,11 +14,13 @@ import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.MessageType;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
@@ -75,13 +77,20 @@ public class Limbo implements Runnable {
                 false,
                 this.server.getWorldRegistryKeys(),
                 (Impl) this.server.getRegistryManager(), 
-                player.getServerWorld().getDimension(),
-                player.getServerWorld().getRegistryKey(),
+                this.server.getOverworld().getDimension(),
+                World.OVERWORLD,
                 20, 
                 10, 
                 false, false, false, false
             ));
         }
+        PlayerAbilities abilities = new PlayerAbilities();
+        abilities.allowFlying = true;
+        abilities.allowModifyWorld = false;
+        abilities.invulnerable = true;
+        abilities.flying = true;
+        abilities.creativeMode = false;
+        connection.send(new PlayerAbilitiesS2CPacket(abilities));
         connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0));
         rollBackProgressListener.onPlayerConnected(p);
         

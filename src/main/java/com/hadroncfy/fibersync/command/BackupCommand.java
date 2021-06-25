@@ -15,6 +15,7 @@ import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.backup.BackupExcluder;
 import com.hadroncfy.fibersync.backup.BackupFactory;
 import com.hadroncfy.fibersync.backup.BackupInfo;
+import com.hadroncfy.fibersync.command.BackupCommand.SupplierWithSyntaxException;
 import com.hadroncfy.fibersync.command.task.BackTask;
 import com.hadroncfy.fibersync.command.task.BackupTask;
 import com.hadroncfy.fibersync.command.task.SyncTask;
