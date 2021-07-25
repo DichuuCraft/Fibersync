@@ -64,7 +64,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
         }
 
         info.size = new FileCopier(worldDir, backupDir)
-            .setExclude(FibersyncMod.getConfig().excludes)
+            .setExclude(new BackupExcluder(FibersyncMod.getConfig().excludes, 0))
             .setListener(listener)
             .run();
         writeInfo();
