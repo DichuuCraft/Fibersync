@@ -17,6 +17,7 @@ public class BackupExcluder implements PathMatcher {
     private static final Set<Path> OVERWORLD_PATHS = new HashSet<>();
     private static final Path NETHER_PATH = Paths.get("DIM-1");
     private static final Path THE_END_PATH = Paths.get("DIM1");
+    private static final Path SESSION_LOCK = Paths.get("session.lock");
 
     static {
         OVERWORLD_PATHS.add(Paths.get("region"));
@@ -34,9 +35,8 @@ public class BackupExcluder implements PathMatcher {
 
     @Override
     public boolean matches(Path path) {
-        if (parent.matches(path)){
-            return true;
-        }
+        if (SESSION_LOCK.equals(path)) return true;
+        if (parent.matches(path)) return true;
         if (path.getNameCount() > 0){
             Path p2 = path.getName(0);
 
