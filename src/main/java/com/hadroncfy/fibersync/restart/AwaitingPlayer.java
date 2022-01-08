@@ -15,7 +15,7 @@ public class AwaitingPlayer {
     public AwaitingPlayer(Limbo limbo, ServerPlayerEntity entity, ClientConnection connection){
         this.entity = entity;
         this.connection = connection;
-        this.dim = entity.getServerWorld().getDimension();
+        this.dim = entity.getWorld().getDimension();
         entity.world = null;
         handler = new ServerDummyPlayHandler(limbo, this);
     }

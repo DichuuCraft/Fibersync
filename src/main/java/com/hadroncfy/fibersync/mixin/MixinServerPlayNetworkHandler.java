@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import net.minecraft.network.packet.c2s.play.ChatMessageC2SPacket;
+import net.minecraft.server.filter.TextStream;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 
@@ -22,13 +22,14 @@ public class MixinServerPlayNetworkHandler {
 
     @Shadow
     public ServerPlayerEntity player;
-    
-    @Inject(method = "method_31286", at = @At(
+
+    @Inject(method = "handleMessage", at = @At(
         value = "INVOKE",
-        target = "Lnet/minecraft/server/PlayerManager;broadcastChatMessage(Lnet/minecraft/text/Text;Lnet/minecraft/network/MessageType;Ljava/util/UUID;)V",
+        target = "Lnet/minecraft/server/PlayerManager;broadcast(Lnet/minecraft/text/Text;Ljava/util/function/Function;Lnet/minecraft/network/MessageType;Ljava/util/UUID;)V",
         shift = At.Shift.AFTER
     ))
-    private void onChat(String msg, CallbackInfo ci){
+    private void onChat(TextStream.Message message, CallbackInfo ci){
+        String msg = message.getRaw();
         Matcher m = PREFIX.matcher(msg);
         if (m.find()){
             String prefix = m.group();

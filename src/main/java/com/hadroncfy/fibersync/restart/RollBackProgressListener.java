@@ -12,7 +12,6 @@ import net.minecraft.entity.boss.ServerBossBar;
 import net.minecraft.entity.boss.BossBar.Color;
 import net.minecraft.entity.boss.BossBar.Style;
 import net.minecraft.network.packet.s2c.play.BossBarS2CPacket;
-import net.minecraft.network.packet.s2c.play.BossBarS2CPacket.Type;
 import net.minecraft.server.WorldGenerationProgressLogger;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.ChunkStatus;
@@ -38,8 +37,8 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
     }
 
     void onPlayerConnected(AwaitingPlayer player){
-        player.getConnection().send(new BossBarS2CPacket(Type.ADD, fileCopyProgressBar));
-        player.getConnection().send(new BossBarS2CPacket(Type.ADD, spawnChunkGenProgressBar));
+        player.getConnection().send(BossBarS2CPacket.add(fileCopyProgressBar));
+        player.getConnection().send(BossBarS2CPacket.add(spawnChunkGenProgressBar));
     }
 
     @Override
@@ -54,7 +53,7 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
         this.size += size;
         float now = (float)this.size / (float)totalSize;
         fileCopyProgressBar.setPercent((float)this.size / (float)totalSize);
-        limbo.sendToAll(new BossBarS2CPacket(Type.UPDATE_PCT, fileCopyProgressBar));
+        limbo.sendToAll(BossBarS2CPacket.updateProgress(fileCopyProgressBar));
         int i = (int)(last * 10), j = (int)(now * 10);
         if (i != j){
             LOGGER.info("Roll back: {}%", j * 10);
@@ -64,7 +63,7 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
     @Override
     public void done() {
         fileCopyProgressBar.setPercent(1);
-        limbo.sendToAll(new BossBarS2CPacket(Type.UPDATE_PCT, fileCopyProgressBar));
+        limbo.sendToAll(BossBarS2CPacket.updateProgress(fileCopyProgressBar));
     }
 
     @Override
@@ -78,7 +77,7 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
         super.setChunkStatus(pos, status);
         if (!stopped && status == ChunkStatus.FULL){
             spawnChunkGenProgressBar.setPercent((float)loadedChunk++ / (float)SPAWN_CHUNK_COUNT);
-            limbo.sendToAll(new BossBarS2CPacket(Type.UPDATE_PCT, spawnChunkGenProgressBar));
+            limbo.sendToAll(BossBarS2CPacket.updateProgress(spawnChunkGenProgressBar));
         }
     }
 
@@ -90,7 +89,7 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
     
     public void end(){
         stopped = true;
-        limbo.sendToAll(new BossBarS2CPacket(Type.REMOVE, fileCopyProgressBar));
-        limbo.sendToAll(new BossBarS2CPacket(Type.REMOVE, spawnChunkGenProgressBar));
+        limbo.sendToAll(BossBarS2CPacket.remove(fileCopyProgressBar.getUuid()));
+        limbo.sendToAll(BossBarS2CPacket.remove(spawnChunkGenProgressBar.getUuid()));
     }
 }

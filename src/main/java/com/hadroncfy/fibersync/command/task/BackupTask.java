@@ -30,7 +30,7 @@ public class BackupTask extends BaseTask {
                 });
             } catch(Exception e){
                 e.printStackTrace();
-                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
+                server.getPlayerManager().broadcast(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
             } finally {
                 cctx.endTask();
             }

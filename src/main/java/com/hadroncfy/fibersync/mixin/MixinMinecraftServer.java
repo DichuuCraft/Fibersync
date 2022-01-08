@@ -23,7 +23,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.world.Difficulty;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelStorage;
 
@@ -43,7 +42,7 @@ public abstract class MixinMinecraftServer implements IServer {
     protected abstract void createWorlds(WorldGenerationProgressListener worldGenerationProgressListener);
 
     @Shadow
-    protected abstract void method_27731(); // setDifficulty
+    protected abstract void updateDifficulty(); // setDifficulty
 
     @Shadow @Final
     protected LevelStorage.Session session;
@@ -66,7 +65,7 @@ public abstract class MixinMinecraftServer implements IServer {
     private void loadWorld(WorldGenerationProgressListener startRegionListener) {
         this.loadWorldResourcePack();
         createWorlds(startRegionListener);
-        method_27731();
+        this.updateDifficulty();
         prepareStartRegion(startRegionListener);
     }
 

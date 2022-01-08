@@ -16,7 +16,6 @@ import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
-import net.minecraft.network.packet.c2s.play.ConfirmScreenActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.CraftRequestC2SPacket;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
@@ -24,6 +23,7 @@ import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.JigsawGeneratingC2SPacket;
 import net.minecraft.network.packet.c2s.play.KeepAliveC2SPacket;
 import net.minecraft.network.packet.c2s.play.PickFromInventoryC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayPongC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
@@ -119,7 +119,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onGameMessage(ChatMessageC2SPacket packet) {
+    public void onChatMessage(ChatMessageC2SPacket packet) {
         final String msg = packet.getChatMessage();
         Text text = new TranslatableText("chat.type.text", player.getEntity().getGameProfile().getName(), msg);
         // player.getEntity().networkHandler.onChatMessage(packet);
@@ -134,12 +134,6 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onClientSettings(ClientSettingsC2SPacket packet) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void onConfirmScreenAction(ConfirmScreenActionC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -196,7 +190,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onPlayerAbilities(UpdatePlayerAbilitiesC2SPacket packet) {
+    public void onUpdatePlayerAbilities(UpdatePlayerAbilitiesC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -232,7 +226,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onSignUpdate(UpdateSignC2SPacket packet) {
+    public void onUpdateSign(UpdateSignC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -328,13 +322,13 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onStructureBlockUpdate(UpdateStructureBlockC2SPacket packet) {
+    public void onUpdateStructureBlock(UpdateStructureBlockC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
 
     @Override
-    public void onMerchantTradeSelect(SelectMerchantTradeC2SPacket packet) {
+    public void onSelectMerchantTrade(SelectMerchantTradeC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -358,7 +352,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onJigsawUpdate(UpdateJigsawC2SPacket packet) {
+    public void onUpdateJigsaw(UpdateJigsawC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -383,6 +377,12 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onRecipeCategoryOptions(RecipeCategoryOptionsC2SPacket packet) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void onPong(PlayPongC2SPacket packet) {
         // TODO Auto-generated method stub
         
     }

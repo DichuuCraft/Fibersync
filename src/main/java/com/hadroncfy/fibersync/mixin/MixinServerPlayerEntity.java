@@ -35,6 +35,7 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity implements IP
 
     @Override
     public void reset() {
+        this.unsetRemoved();
         recipeBook = new ServerRecipeBook();
         statHandler = server.getPlayerManager().createStatHandler((ServerPlayerEntity)(Object)this);
         advancementTracker = server.getPlayerManager().getAdvancementTracker((ServerPlayerEntity)(Object)this);

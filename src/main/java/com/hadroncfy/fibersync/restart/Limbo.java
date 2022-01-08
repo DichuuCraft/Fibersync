@@ -8,7 +8,6 @@ import java.util.UUID;
 
 import com.hadroncfy.fibersync.interfaces.IPlayer;
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
-import com.hadroncfy.fibersync.mixin.ContainerAccessor;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 import org.apache.logging.log4j.LogManager;
@@ -70,17 +69,18 @@ public class Limbo implements Runnable {
         
         if (sendJoin){
             connection.send(new GameJoinS2CPacket(
-                player.getEntityId(), 
+                player.getId(),
+                false,
                 player.interactionManager.getGameMode(), 
                 player.interactionManager.getPreviousGameMode(),
-                0,
-                false,
                 this.server.getWorldRegistryKeys(),
                 (Impl) this.server.getRegistryManager(), 
                 this.server.getOverworld().getDimension(),
                 World.OVERWORLD,
-                20, 
-                10, 
+                0,
+                20,
+                10,
+                10,
                 false, false, false, false
             ));
         }
@@ -91,7 +91,7 @@ public class Limbo implements Runnable {
         abilities.flying = true;
         abilities.creativeMode = false;
         connection.send(new PlayerAbilitiesS2CPacket(abilities));
-        connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0));
+        connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0, true));
         rollBackProgressListener.onPlayerConnected(p);
         
         LOGGER.info("Player {} joined limbo", player.getGameProfile().getName());
@@ -120,7 +120,7 @@ public class Limbo implements Runnable {
         pm.reset();
         pm.setLimbo(null);
 
-        if (server.isSinglePlayer() && players.isEmpty()){
+        if (server.isSingleplayer() && players.isEmpty()){
             LOGGER.info("Stopping server as the server has no players");
             // server.stop(true);
         }
@@ -134,7 +134,6 @@ public class Limbo implements Runnable {
                 // com.hadroncfy.sreplay.recording.Photographer.
                 final ServerPlayerEntity playerEntity = player.getEntity();
                 playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
-                playerEntity.removed = false;
                 ((IPlayer)playerEntity).reset();
     
                 playerManager.onPlayerConnect(player.getConnection(), player.getEntity());

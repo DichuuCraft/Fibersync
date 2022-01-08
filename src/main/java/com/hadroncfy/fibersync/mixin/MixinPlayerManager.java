@@ -44,9 +44,9 @@ public class MixinPlayerManager implements IPlayerManager {
     ))
     private void onSendGameJoin(ClientConnection connection, ServerPlayerEntity player, CallbackInfo ci){
         if (shouldRefreshScreen){
-            RegistryKey<World> dimensionKey = player.getServerWorld().getRegistryKey();
+            RegistryKey<World> dimensionKey = player.getWorld().getRegistryKey();
             RegistryKey<World> dKey = dimensionKey == World.OVERWORLD ? World.NETHER : World.OVERWORLD;
-            DimensionType dType = player.getServerWorld().getDimension();
+            DimensionType dType = player.getWorld().getDimension();
             GameMode gmode = player.interactionManager.getGameMode();
 
             // Send these two packets to prevent the client from being stuck in the downloading terrain screen
@@ -64,11 +64,11 @@ public class MixinPlayerManager implements IPlayerManager {
             connection.send(new PlayerRespawnS2CPacket(
                 dType,
                 dimensionKey,
-                BiomeAccess.hashSeed(player.getServerWorld().getSeed()),
+                BiomeAccess.hashSeed(player.getWorld().getSeed()),
                 gmode,
                 gmode,
-                player.getServerWorld().isDebugWorld(),
-                player.getServerWorld().isFlat(),
+                player.getWorld().isDebugWorld(),
+                player.getWorld().isFlat(),
                 true
             ));
         }

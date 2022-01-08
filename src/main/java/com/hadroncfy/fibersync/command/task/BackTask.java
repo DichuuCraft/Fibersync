@@ -41,7 +41,7 @@ public class BackTask extends BaseTask {
 
     private void startBack(Boolean b) {
         if (b) {
-            server.getPlayerManager().broadcastChatMessage(getStartedText(), MessageType.CHAT, getSourceUUID(this.src));
+            server.getPlayerManager().broadcast(getStartedText(), MessageType.CHAT, getSourceUUID(this.src));
             ((IServer) server).reloadAll(new ReloadListener());
         } else {
             cctx.endTask();
@@ -51,14 +51,14 @@ public class BackTask extends BaseTask {
     private void prepareToBack() {
         cctx.createCountDownTask(i -> {
             Text txt = render(getCountDownTitleText(), Integer.toString(i));
-            server.getPlayerManager().broadcastChatMessage(txt, MessageType.GAME_INFO, new UUID(0, 0));
+            server.getPlayerManager().broadcast(txt, MessageType.GAME_INFO, new UUID(0, 0));
         }).thenAccept(this::startBack);
     }
 
     private void runBackTask(ServerCommandSource dummy) {
         if (cctx.tryBeginTask(src)) {
             server.getPlayerManager()
-                    .broadcastChatMessage(render(getStartAlertText(), src.getName(), selected.getInfo().name),  MessageType.CHAT, getSourceUUID(this.src));
+                    .broadcast(render(getStartAlertText(), src.getName(), selected.getInfo().name),  MessageType.CHAT, getSourceUUID(this.src));
 
             autoBackup = currentWorld;
             if (selected.collides(currentWorld)) {
@@ -67,7 +67,7 @@ public class BackTask extends BaseTask {
             }
 
             doBackup(autoBackup).thenRun(this::prepareToBack).exceptionally(e -> {
-                server.getPlayerManager().broadcastChatMessage(render(getFailedText(), src.getName(), e.toString()),
+                server.getPlayerManager().broadcast(render(getFailedText(), src.getName(), e.toString()),
                     MessageType.CHAT, getSourceUUID(this.src)
                 );
                 cctx.endTask();
@@ -119,17 +119,17 @@ public class BackTask extends BaseTask {
 
         @Override
         public void onReloadDone() {
-            server.getPlayerManager().broadcastChatMessage(getFinishedText(), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
+            server.getPlayerManager().broadcast(getFinishedText(), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
             if (autoBackup != currentWorld){
                 LOGGER.info("Copying file back from temp dir");
                 CompletableFuture.runAsync(() -> {
                     FileOperationProgressBar progressBar = new FileOperationProgressBar(server, getFormat().fileCopyBarTitle);
                     try {
                         autoBackup.copyTo(currentWorld, progressBar);
-                        server.getPlayerManager().broadcastChatMessage(getFormat().copiedFromTempDir, MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
+                        server.getPlayerManager().broadcast(getFormat().copiedFromTempDir, MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
                     } catch (Exception e1) {
                         e1.printStackTrace();
-                        server.getPlayerManager().broadcastChatMessage(render(getFormat().failedToCopyFromTempDir, e1.toString()), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
+                        server.getPlayerManager().broadcast(render(getFormat().failedToCopyFromTempDir, e1.toString()), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
                     }
                     finally {
                         progressBar.done();

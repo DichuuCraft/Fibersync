@@ -34,7 +34,7 @@ public abstract class BaseTask {
 
     protected BaseTask(ServerCommandSource src){
         this.src = src;
-        this.server = src.getMinecraftServer();
+        this.server = src.getServer();
         this.cctx = ((IServer)server).getContext();
     }
     public abstract int run();
@@ -69,7 +69,7 @@ public abstract class BaseTask {
 
         String name = entry.getInfo().name;
         String senderName = src.getName();
-        server.getPlayerManager().broadcastChatMessage(render(getFormat().creatingBackup, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
+        server.getPlayerManager().broadcast(render(getFormat().creatingBackup, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
         return CompletableFuture.runAsync(() -> {
             final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().creatingBackupTitle, entry.getInfo().name));
             try {
@@ -77,10 +77,10 @@ public abstract class BaseTask {
                 LOGGER.info("world dir: {}", worldDir);
 
                 entry.saveBackup(worldDir, progressBar);
-                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupComplete, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
+                server.getPlayerManager().broadcast(render(getFormat().backupComplete, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
             } catch (Exception e) {
                 e.printStackTrace();
-                server.getPlayerManager().broadcastChatMessage(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
+                server.getPlayerManager().broadcast(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
                 throw new CompletionException(e);
             } finally {
                 setAutosave(server, autosave);
