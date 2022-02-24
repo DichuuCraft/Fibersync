@@ -15,25 +15,35 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.ServerNetworkIo;
+import net.minecraft.server.ServerTask;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.thread.ReentrantThreadExecutor;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelStorage;
 
 @Mixin(MinecraftServer.class)
-public abstract class MixinMinecraftServer implements IServer {
-    private static final Logger LOGGER = LogManager.getLogger();
-    @Shadow @Final
-    protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
+public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<ServerTask> implements IServer {
+    public MixinMinecraftServer(String string) {
+        super(string);
+    }
 
-    @Shadow @Final
-    private Map<DimensionType, ServerWorld> worlds;
+    private static final Logger LOGGER = LogManager.getLogger();
+    @Shadow @Final protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
+    @Shadow @Final private Map<DimensionType, ServerWorld> worlds;
+    @Shadow @Final protected LevelStorage.Session session;
+    @Shadow @Final private ServerNetworkIo networkIo;
+    @Shadow private int ticks;
+    @Shadow private volatile boolean running;
+    @Shadow @Mutable private ServerScoreboard scoreboard;
 
     @Shadow
     public abstract void prepareStartRegion(WorldGenerationProgressListener worldGenerationProgressListener);
@@ -44,22 +54,15 @@ public abstract class MixinMinecraftServer implements IServer {
     @Shadow
     protected abstract void updateDifficulty(); // setDifficulty
 
-    @Shadow @Final
-    protected LevelStorage.Session session;
-
     @Shadow
     protected abstract void loadWorldResourcePack();
 
-    @Shadow
-    private int ticks;
+    @Unique private BackupCommandContext commandContext = new BackupCommandContext(() -> this.session.getDirectoryName());
 
-    @Shadow
-    private volatile boolean running;
-
-    @Shadow @Mutable
-    private ServerScoreboard scoreboard;
-
-    private BackupCommandContext commandContext = new BackupCommandContext(() -> this.session.getDirectoryName());
+    @Unique private IReloadListener reloadCB;
+    @Unique private Runnable tickTask;
+    @Unique private int tickTaskPeriod;
+    @Unique private int tickBase;
 
     // cannot directly call original loadWorld since other mods might mixin into this method
     private void loadWorld(WorldGenerationProgressListener startRegionListener) {
@@ -69,18 +72,12 @@ public abstract class MixinMinecraftServer implements IServer {
         prepareStartRegion(startRegionListener);
     }
 
-    private IReloadListener reloadCB;
-
-    private Runnable tickTask;
-    private int tickTaskPeriod;
-    private int tickBase;
 
     @Override
     public void reloadAll(IReloadListener listener){
         if (reloadCB == null) {
             reloadCB = listener;
-        }
-        else {
+        } else {
             throw new IllegalStateException("A reloading task is already in progress!");
         }
     }
@@ -101,12 +98,30 @@ public abstract class MixinMinecraftServer implements IServer {
             }
             worlds.clear();
 
-            reloadCB.onReload(limbo);
-            
+            {
+                this.tasks.clear();
+                this.executionsInProgress = 0;
+            }
+
+            final var finished = new boolean[]{false};
+            final var reload_thrd = new Thread(() -> {
+                reloadCB.onReload(limbo);
+                finished[0] = true;
+            });
+            reload_thrd.start();
+            while (!finished[0]) {
+                limbo.removeRemovedPlayers();
+                this.networkIo.tick();
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
             LOGGER.info("Reloading");
-            scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
-            loadWorld(limbo.getWorldGenListener());
-            
+            this.scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
+            this.loadWorld(limbo.getWorldGenListener());
             limbo.end();
 
             reloadCB.onReloadDone();

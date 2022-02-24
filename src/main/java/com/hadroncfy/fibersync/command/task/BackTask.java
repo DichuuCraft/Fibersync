@@ -114,7 +114,6 @@ public class BackTask extends BaseTask {
                 e.printStackTrace();
                 limbo.broadcast(TextRenderer.render(FibersyncMod.getFormat().failedToCopyLevelFiles, e.toString()));
             }
-            
         }
 
         @Override

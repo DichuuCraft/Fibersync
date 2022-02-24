@@ -30,11 +30,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.registry.DynamicRegistryManager.Impl;
 import net.minecraft.world.World;
 
-public class Limbo implements Runnable {
+public class Limbo {
     private static final Logger LOGGER = LogManager.getLogger();
     private final List<AwaitingPlayer> players = new ArrayList<>();
-    private volatile boolean running = false;
-    private final Thread ticker = new Thread(this);
     private final MinecraftServer server;
     private final RollBackProgressListener rollBackProgressListener = new RollBackProgressListener(this);
 
@@ -47,13 +45,11 @@ public class Limbo implements Runnable {
     }
 
     public void start() {
-        running = true;
         for (ServerPlayerEntity player : new ArrayList<>(server.getPlayerManager().getPlayerList())) {
             server.getPlayerManager().remove(player);
             onPlayerConnect(player, player.networkHandler.connection, false);
         }
         ((IPlayerManager)server.getPlayerManager()).setLimbo(this);
-        ticker.start();
     }
 
     public WorldGenerationProgressListener getWorldGenListener(){
@@ -107,13 +103,7 @@ public class Limbo implements Runnable {
         final IPlayerManager pm = (IPlayerManager) playerManager;
         final ServerWorld dummy = server.getOverworld();
 
-        running = false;
-        try {
-            ticker.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        removeRemovedPlayers();
+        this.removeRemovedPlayers();
 
         rollBackProgressListener.end();
 
@@ -154,28 +144,16 @@ public class Limbo implements Runnable {
     }
 
     public void tick() {
-        removeRemovedPlayers();
-        server.getNetworkIo().tick();
+        this.removeRemovedPlayers();
+        this.server.getNetworkIo().tick();
     }
 
-    private synchronized void removeRemovedPlayers(){
+    public synchronized void removeRemovedPlayers(){
         for (Iterator<AwaitingPlayer> iterator = players.iterator(); iterator.hasNext();){
             AwaitingPlayer p = iterator.next();
             if (p.isRemoved()){
                 iterator.remove();
                 LOGGER.info("Player {} left limbo", p.getEntity().getGameProfile().getName());
-            }
-        }
-    }
-
-    @Override
-    public void run() {
-        while (running) {
-            tick();
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
     }

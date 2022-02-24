@@ -15,7 +15,6 @@ import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.backup.BackupExcluder;
 import com.hadroncfy.fibersync.backup.BackupFactory;
 import com.hadroncfy.fibersync.backup.BackupInfo;
-import com.hadroncfy.fibersync.command.BackupCommand.SupplierWithSyntaxException;
 import com.hadroncfy.fibersync.command.task.BackTask;
 import com.hadroncfy.fibersync.command.task.BackupTask;
 import com.hadroncfy.fibersync.command.task.SyncTask;
@@ -71,7 +70,7 @@ public class BackupCommand {
                     .then(argument(ARG_NAME, StringArgumentType.word())
                         .suggests(BackupCommand::suggestMirrors)
                         .executes(BackupCommand::sync)
-                            .then(literal("only") 
+                            .then(literal("only")
                                 .then(argument("only", StringArgumentType.word())
                                 .suggests(BackupCommand::suggestDimOnlys)
                                 .executes(BackupCommand::sync)))))
@@ -286,7 +285,7 @@ public class BackupCommand {
         final BackupCommandContext cctx = ((IServer)server).getContext();
         final List<BackupEntry> entries = cctx.getBackupFactory().getBackups();
         final int maxBackups = getConfig().maxBackupCount;
-        
+
         final String description = tryGetArg(() -> MessageArgumentType.getMessage(ctx, ARG_DESC).asString(), () -> "");
         BackupEntry overwrite = null;
 
@@ -294,8 +293,7 @@ public class BackupCommand {
         final BackupEntry selected = cctx.getBackupFactory().create(name, description, getSourceUUID(ctx));
         if (selected.exists()){
             overwrite = selected;
-        }
-        else if (maxBackups != -1 && BackupFactory.getBackupCount(entries) >= maxBackups){
+        } else if (maxBackups != -1 && BackupFactory.getBackupCount(entries) >= maxBackups){
             overwrite = getOldestUnlockedEntry(entries);
             if (overwrite == null){
                 src.sendError(getFormat().allBackupsLocked);
@@ -321,8 +319,7 @@ public class BackupCommand {
             parser.parse(StringArgumentType.getString(ctx, "only"));
             parser.end();
             mask = parser.getMask();
-        }
-        catch(IllegalArgumentException e){
+        } catch(IllegalArgumentException e){
             // ignore
         }
 
@@ -364,8 +361,7 @@ public class BackupCommand {
                     ), false);
                 }
                 src.sendFeedback(render(getFormat().backupListFooter, String.format("%.2f", (float)totalSize / 1024 / 1024)), false);
-            }
-            catch(Exception e){
+            } catch(Exception e) {
                 src.sendError(render(getFormat().failedToRetrieveList, e.toString()));
                 e.printStackTrace();
             }
@@ -381,8 +377,7 @@ public class BackupCommand {
     private static <T> T tryGetArg(SupplierWithSyntaxException<T> arg, Supplier<T> def){
         try {
             return arg.get();
-        }
-        catch(IllegalArgumentException | CommandSyntaxException e){
+        } catch(IllegalArgumentException | CommandSyntaxException e){
             return def.get();
         }
     }

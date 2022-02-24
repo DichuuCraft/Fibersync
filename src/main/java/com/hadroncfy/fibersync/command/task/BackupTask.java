@@ -48,8 +48,7 @@ public class BackupTask extends BaseTask {
                 src.sendError(getFormat().overwriteFailedLocked);
                 return 0;
             }
-        }
-        else {
+        } else {
             runCreateBackupTask(src);
         }
         return 1;

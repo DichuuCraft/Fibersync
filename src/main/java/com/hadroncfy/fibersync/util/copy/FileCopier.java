@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -47,8 +48,8 @@ public class FileCopier {
         return this;
     }
 
-    private static boolean checkSum(Path f1, Path f2) throws IOException, NoSuchAlgorithmException {
-        final byte[] b1 = FileUtil.checkSum(f1), b2 = FileUtil.checkSum(f2);
+    private static boolean checkSum(MessageDigest md, Path f1, Path f2) throws IOException {
+        final byte[] b1 = FileUtil.checkSum(md, f1), b2 = FileUtil.checkSum(md, f2);
         for (int i = 0; i < b1.length; i++) {
             if (b1[i] != b2[i]) {
                 return false;
@@ -58,7 +59,7 @@ public class FileCopier {
     }
 
     public long run() throws IOException, NoSuchAlgorithmException {
-
+        var md = MessageDigest.getInstance("md5");
         Files.walkFileTree(src, new SourceFileVisitor());
         Files.walkFileTree(dest, new DestFileVisitor());
 
@@ -80,7 +81,7 @@ public class FileCopier {
                 } else {
                     if (src1f.isDirectory()) {
                         Files.delete(dest1);
-                    } else if (checkSum(src1, dest1)) {
+                    } else if (checkSum(md, src1, dest1)) {
                         LOGGER.debug("Skipping non-modified file {}", src1);
                         if (listener != null){
                             listener.onFileDone(src1, src1f.length());

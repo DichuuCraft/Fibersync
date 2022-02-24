@@ -5,7 +5,7 @@
  * Learn how to create Gradle builds at https://guides.gradle.org/creating-new-gradle-builds/
  */
 plugins {
-	id 'fabric-loom' version '0.10-SNAPSHOT'
+	id 'fabric-loom' version '0.11-SNAPSHOT'
 }
 
 sourceCompatibility = JavaVersion.VERSION_17
@@ -16,6 +16,10 @@ version = project.minecraft_version+'-'+project.mod_version
 group = project.maven_group
 
 def shadeExclusions = {
+}
+
+loom {
+	accessWidenerPath = file("src/main/resources/fibersync.accesswidener")
 }
 
 dependencies {

@@ -9,18 +9,15 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 
 import com.google.gson.JsonParseException;
 import com.hadroncfy.fibersync.config.Config;
 import com.hadroncfy.fibersync.config.Formats;
-import com.hadroncfy.fibersync.mixin.LevelStorageAccessor;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.fabricmc.api.ModInitializer;
-import net.minecraft.server.MinecraftServer;
 
 public class FibersyncMod implements ModInitializer {
     private static final Logger LOGGER = LogManager.getLogger();
