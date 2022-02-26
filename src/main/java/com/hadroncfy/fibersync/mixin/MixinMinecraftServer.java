@@ -19,6 +19,9 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.resource.ServerResourceManager;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerNetworkIo;
@@ -26,7 +29,10 @@ import net.minecraft.server.ServerTask;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.dynamic.RegistryOps;
+import net.minecraft.util.registry.DynamicRegistryManager;
 import net.minecraft.util.thread.ReentrantThreadExecutor;
+import net.minecraft.world.SaveProperties;
 import net.minecraft.world.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelStorage;
 
@@ -37,13 +43,19 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     }
 
     @Unique private static final Logger LOGGER = LogManager.getLogger();
+
     @Shadow @Final protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
-    @Shadow @Final private Map<DimensionType, ServerWorld> worlds;
     @Shadow @Final protected LevelStorage.Session session;
     @Shadow @Final private ServerNetworkIo networkIo;
+    @Shadow @Final protected DynamicRegistryManager.Impl registryManager;
+    @Shadow private ServerResourceManager serverResourceManager;
     @Shadow private int ticks;
     @Shadow private volatile boolean running;
+
+    // things that needs reseting
+    @Shadow @Final private Map<DimensionType, ServerWorld> worlds;
     @Shadow @Mutable private ServerScoreboard scoreboard;
+    @Shadow @Mutable protected SaveProperties saveProperties;
 
     @Shadow
     public abstract void prepareStartRegion(WorldGenerationProgressListener worldGenerationProgressListener);
@@ -66,6 +78,7 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     @Unique private int tickBase;
 
     // cannot directly call original loadWorld since other mods might mixin into this method
+    @Unique
     private void loadWorld(WorldGenerationProgressListener startRegionListener) {
         this.loadWorldResourcePack();
         createWorlds(startRegionListener);
@@ -121,12 +134,24 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
             }
 
             LOGGER.info("Reloading");
-            this.scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
+            this.resetServer();
             this.loadWorld(limbo.getWorldGenListener());
             limbo.end();
 
             reloadCB.onReloadDone();
             reloadCB = null;
+        }
+    }
+
+    @Unique
+    private void resetServer() {
+        this.scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
+        var registry_ops = RegistryOps.ofLoaded(NbtOps.INSTANCE, this.serverResourceManager.getResourceManager(), this.registryManager);
+        var props = this.session.readLevelProperties(registry_ops, this.session.getDataPackSettings());
+        if (props != null) {
+            this.saveProperties = props;
+        } else {
+            LOGGER.warn("failed to reload save properties");
         }
     }
 
