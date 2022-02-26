@@ -7,11 +7,11 @@
       "MixinCommandManager",
       "MixinMinecraftServer",
       "LevelStorageAccessor",
-      "WorldSaveHandlerAccessor",
       "MixinPlayerManager",
       "ContainerAccessor",
       "MixinServerPlayNetworkHandler",
-      "MixinServerPlayerEntity"
+      "MixinServerPlayerEntity",
+      "MixinServerLoginNetworkHandler"
     ],
     "client": [
     ],

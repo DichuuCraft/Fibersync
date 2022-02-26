@@ -25,19 +25,23 @@ public class FileOperationProgressBar implements FileOperationProgressListener {
         progressBar = new ServerBossBar(title, Color.GREEN, Style.PROGRESS);
         progressBar.setPercent(0);
         for (ServerPlayerEntity player: server.getPlayerManager().getPlayerList()){
-            progressBar.addPlayer(player);
+            this.addPlayer(player);
         }
     }
 
+    public synchronized void addPlayer(ServerPlayerEntity player) {
+        this.progressBar.addPlayer(player);
+    }
+
     @Override
-    public void start(long totalSize) {
+    public synchronized void start(long totalSize) {
         this.totalSize = totalSize;
         size = 0;
         progressBar.setPercent(0);
     }
 
     @Override
-    public void onFileDone(Path file, long size) {
+    public synchronized void onFileDone(Path file, long size) {
         float last = (float)this.size / (float)totalSize;
         this.size += size;
         float now = (float)this.size / (float)totalSize;
@@ -50,11 +54,15 @@ public class FileOperationProgressBar implements FileOperationProgressListener {
 
     @Override
     public void done() {
-        progressBar.setPercent(1);
+        synchronized(this) {
+            progressBar.setPercent(1);
+        }
         new Timer().schedule(new TimerTask(){
             @Override
             public void run() {
-                progressBar.clearPlayers();
+                synchronized(FileOperationProgressBar.this) {
+                    progressBar.clearPlayers();
+                }
             }
         }, 1000);
     }

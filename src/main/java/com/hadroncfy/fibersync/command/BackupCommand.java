@@ -98,28 +98,28 @@ public class BackupCommand {
 
     private static CompletableFuture<Suggestions> suggestBackups(final CommandContext<ServerCommandSource> context,
             final SuggestionsBuilder builder) {
-        final BackupFactory bf = ((IServer) context.getSource().getServer()).getContext().getBackupFactory();
+        final BackupFactory bf = ((IServer) context.getSource().getServer()).getBackupCommandContext().getBackupFactory();
         return suggestMatching(bf.getBackups().stream()
                 .map(e -> e.getInfo().name), builder);
     }
 
     private static CompletableFuture<Suggestions> suggestMirrors(final CommandContext<ServerCommandSource> context,
             final SuggestionsBuilder builder) {
-        final BackupFactory bf = ((IServer) context.getSource().getServer()).getContext().getMirrorFactory();
+        final BackupFactory bf = ((IServer) context.getSource().getServer()).getBackupCommandContext().getMirrorFactory();
         return suggestMatching(bf.getBackups().stream()
                 .map(e -> e.getInfo().name), builder);
     }
 
     private static CompletableFuture<Suggestions> suggestLockedBackups(
             final CommandContext<ServerCommandSource> context, final SuggestionsBuilder builder) {
-        final BackupFactory bf = ((IServer) context.getSource().getServer()).getContext().getBackupFactory();
+        final BackupFactory bf = ((IServer) context.getSource().getServer()).getBackupCommandContext().getBackupFactory();
         return suggestMatching(bf.getBackups().stream()
                 .filter(p -> p.getInfo().locked).map(e -> e.getInfo().name), builder);
     }
 
     private static CompletableFuture<Suggestions> suggestUnlockedBackups(
             final CommandContext<ServerCommandSource> context, final SuggestionsBuilder builder) {
-        final BackupFactory bf = ((IServer) context.getSource().getServer()).getContext().getBackupFactory();
+        final BackupFactory bf = ((IServer) context.getSource().getServer()).getBackupCommandContext().getBackupFactory();
         return suggestMatching(bf.getBackups().stream()
                 .filter(p -> !p.getInfo().locked).map(e -> e.getInfo().name), builder);
     }
@@ -129,7 +129,7 @@ public class BackupCommand {
         String input = builder.getRemaining();
         DimensionListArgParser parser = new DimensionListArgParser();
         parser.parse(input);
-        
+
         for (String w: parser.getSuggestions()){
             builder.suggest(input + w);
         }
@@ -155,7 +155,7 @@ public class BackupCommand {
 
     private static int confirm(CommandContext<ServerCommandSource> ctx) {
         int code = IntegerArgumentType.getInteger(ctx, "code");
-        final ConfirmationManager cm = ((IServer) ctx.getSource().getServer()).getContext()
+        final ConfirmationManager cm = ((IServer) ctx.getSource().getServer()).getBackupCommandContext()
                 .getConfirmationManager();
         if (!cm.confirm(ctx.getSource().getName(), code)) {
             ctx.getSource().sendError(getFormat().nothingToConfirm);
@@ -165,7 +165,7 @@ public class BackupCommand {
 
     private static int cancel(CommandContext<ServerCommandSource> ctx) {
         final ServerCommandSource src = ctx.getSource();
-        final BackupCommandContext cctx = ((IServer) ctx.getSource().getServer()).getContext();
+        final BackupCommandContext cctx = ((IServer) ctx.getSource().getServer()).getBackupCommandContext();
         if (cctx.hasCountDownTask()) {
             cctx.cancelCountDownTask();
             src.getServer().getPlayerManager()
@@ -193,7 +193,7 @@ public class BackupCommand {
         final String name = StringArgumentType.getString(ctx, ARG_NAME);
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getServer();
-        final BackupCommandContext cctx = ((IServer) server).getContext();
+        final BackupCommandContext cctx = ((IServer) server).getBackupCommandContext();
         final BackupEntry b = cctx.getBackupFactory().getEntry(name);
         if (b == null || !b.exists()) {
             src.sendError(getFormat().backupNotExist);
@@ -206,6 +206,7 @@ public class BackupCommand {
         cctx.getConfirmationManager().submit(src.getName(), src, s -> {
             if (cctx.tryBeginTask(src)) {
                 final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().deletingBackupTitle, b.getInfo().name));
+                cctx.progress_bar.set(progressBar);
                 try {
                     server.getPlayerManager().broadcast(
                         render(getFormat().deletingBackup, src.getName(), b.getInfo().name), MessageType.CHAT, getSourceUUID(ctx));
@@ -220,6 +221,7 @@ public class BackupCommand {
                 } finally {
                     progressBar.done();
                     cctx.endTask();
+                    cctx.progress_bar.set(null);
                 }
             }
         });
@@ -229,7 +231,7 @@ public class BackupCommand {
     private static int setLocked(CommandContext<ServerCommandSource> ctx, boolean locked) {
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getServer();
-        final BackupCommandContext cctx = ((IServer) server).getContext();
+        final BackupCommandContext cctx = ((IServer) server).getBackupCommandContext();
         final BackupEntry entry = cctx.getBackupFactory().getEntry(StringArgumentType.getString(ctx, ARG_NAME));
         if (entry == null) {
             src.sendError(getFormat().backupNotExist);
@@ -282,7 +284,7 @@ public class BackupCommand {
     private static int create(CommandContext<ServerCommandSource> ctx) {
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getServer();
-        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final BackupCommandContext cctx = ((IServer)server).getBackupCommandContext();
         final List<BackupEntry> entries = cctx.getBackupFactory().getBackups();
         final int maxBackups = getConfig().maxBackupCount;
 
@@ -300,14 +302,14 @@ public class BackupCommand {
                 return 1;
             }
         }
-        
+
         return new BackupTask(src, selected, overwrite).run();
     }
 
     private static int sync(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getServer();
-        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final BackupCommandContext cctx = ((IServer)server).getBackupCommandContext();
         final BackupEntry entry = cctx.getMirrorFactory().getEntry(StringArgumentType.getString(ctx, ARG_NAME));
         if (entry == null || !entry.exists()){
             src.sendError(getFormat().backupNotExist);
@@ -329,7 +331,7 @@ public class BackupCommand {
     private static int back(CommandContext<ServerCommandSource> ctx){
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getServer();
-        final BackupCommandContext cctx = ((IServer)server).getContext();
+        final BackupCommandContext cctx = ((IServer)server).getBackupCommandContext();
         final BackupEntry entry = cctx.getBackupFactory().getEntry(StringArgumentType.getString(ctx, ARG_NAME));
         if (entry == null || !entry.exists()){
             src.sendError(getFormat().backupNotExist);
@@ -341,7 +343,7 @@ public class BackupCommand {
 
     private static int list(CommandContext<ServerCommandSource> ctx, boolean isMirror){
         final ServerCommandSource src = ctx.getSource();
-        final BackupCommandContext cctx = ((IServer)src.getServer()).getContext();
+        final BackupCommandContext cctx = ((IServer)src.getServer()).getBackupCommandContext();
         final List<BackupEntry> entries = (isMirror ? cctx.getMirrorFactory() : cctx.getBackupFactory()).getBackups();
         Collections.sort(entries);
         CompletableFuture.runAsync(() -> {

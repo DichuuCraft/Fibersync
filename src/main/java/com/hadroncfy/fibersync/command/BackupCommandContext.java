@@ -2,6 +2,7 @@ package com.hadroncfy.fibersync.command;
 
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
@@ -19,6 +20,7 @@ public class BackupCommandContext {
     private final TaskManager taskmgr = new TaskManager();
     private CountDownTask countDownTask;
     private final Supplier<String> levelName;
+    public final AtomicReference<FileOperationProgressBar> progress_bar = new AtomicReference<>();
 
     public BackupCommandContext(Supplier<String> levelName){
         this.levelName = levelName;

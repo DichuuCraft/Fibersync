@@ -2,19 +2,21 @@ package com.hadroncfy.fibersync.restart;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.hadroncfy.fibersync.interfaces.IPlayer;
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
+import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.minecraft.entity.player.PlayerAbilities;
-import net.minecraft.network.ClientConnection;
 import net.minecraft.network.MessageType;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
@@ -27,17 +29,26 @@ import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.util.registry.DynamicRegistryManager.Impl;
+import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
+import net.minecraft.world.dimension.DimensionType;
 
 public class Limbo {
     private static final Logger LOGGER = LogManager.getLogger();
+    public final Set<RegistryKey<World>> world_keys;
     private final List<AwaitingPlayer> players = new ArrayList<>();
     private final MinecraftServer server;
     private final RollBackProgressListener rollBackProgressListener = new RollBackProgressListener(this);
 
     public Limbo(MinecraftServer server) {
         this.server = server;
+        this.world_keys = new HashSet<>();
+        for (var k: server.getWorldRegistryKeys()) {
+            this.world_keys.add(k);
+        }
     }
 
     public MinecraftServer getServer(){
@@ -47,9 +58,10 @@ public class Limbo {
     public void start() {
         for (ServerPlayerEntity player : new ArrayList<>(server.getPlayerManager().getPlayerList())) {
             server.getPlayerManager().remove(player);
-            onPlayerConnect(player, player.networkHandler.connection, false);
+            var p = new AwaitingPlayer(this, player, player.networkHandler.connection);
+            onPlayerConnect(p, false);
         }
-        ((IPlayerManager)server.getPlayerManager()).setLimbo(this);
+        ((IServer) this.server).setLimbo(this);
     }
 
     public WorldGenerationProgressListener getWorldGenListener(){
@@ -60,18 +72,16 @@ public class Limbo {
         return rollBackProgressListener;
     }
 
-    public void onPlayerConnect(ServerPlayerEntity player, ClientConnection connection, boolean sendJoin){
-        AwaitingPlayer p = new AwaitingPlayer(this, player, connection);
-        
-        if (sendJoin){
-            connection.send(new GameJoinS2CPacket(
-                player.getId(),
+    public void onPlayerConnect(AwaitingPlayer p, boolean sendJoin){
+        if (sendJoin) {
+            p.connection.send(new GameJoinS2CPacket(
+                0,
                 false,
-                player.interactionManager.getGameMode(), 
-                player.interactionManager.getPreviousGameMode(),
-                this.server.getWorldRegistryKeys(),
-                (Impl) this.server.getRegistryManager(), 
-                this.server.getOverworld().getDimension(),
+                GameMode.SPECTATOR,
+                GameMode.SPECTATOR,
+                this.world_keys,
+                (Impl) this.server.getRegistryManager(),
+                this.server.getRegistryManager().get(Registry.DIMENSION_TYPE_KEY).get(DimensionType.OVERWORLD_ID),
                 World.OVERWORLD,
                 0,
                 20,
@@ -86,11 +96,11 @@ public class Limbo {
         abilities.invulnerable = true;
         abilities.flying = true;
         abilities.creativeMode = false;
-        connection.send(new PlayerAbilitiesS2CPacket(abilities));
-        connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0, true));
+        p.connection.send(new PlayerAbilitiesS2CPacket(abilities));
+        p.connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0, true));
         rollBackProgressListener.onPlayerConnected(p);
         
-        LOGGER.info("Player {} joined limbo", player.getGameProfile().getName());
+        LOGGER.info("Player {} joined limbo", p.profile.getName());
         addPlayer(p);
     }
 
@@ -107,14 +117,13 @@ public class Limbo {
 
         rollBackProgressListener.end();
 
-        pm.reset();
-        pm.setLimbo(null);
+        pm.fsModReset();
+        ((IServer) this.server).setLimbo(null);
 
         if (server.isSingleplayer() && players.isEmpty()){
             LOGGER.info("Stopping server as the server has no players");
             // server.stop(true);
-        }
-        else {
+        } else {
             pm.setShouldRefreshScreen(true);
             for (AwaitingPlayer player : players) {
                 // we can't just create a new ServerPlayerEntity here since the original player
@@ -122,11 +131,14 @@ public class Limbo {
                 // be the instance of an inherited class of ServerPlayerEntity, such as
                 // carpet.patches.EntityPlayerMPFake, or
                 // com.hadroncfy.sreplay.recording.Photographer.
-                final ServerPlayerEntity playerEntity = player.getEntity();
+                var playerEntity = player.entity;
+                if (playerEntity == null) {
+                    playerEntity = playerManager.createPlayer(player.profile);
+                }
                 playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
                 ((IPlayer)playerEntity).reset();
-    
-                playerManager.onPlayerConnect(player.getConnection(), player.getEntity());
+
+                playerManager.onPlayerConnect(player.connection, playerEntity);
             }
             pm.setShouldRefreshScreen(false);
         }
@@ -135,7 +147,7 @@ public class Limbo {
 
     public void sendToAll(Packet<?> packet) {
         for (AwaitingPlayer player : players) {
-            player.getConnection().send(packet);
+            player.connection.send(packet);
         }
     }
 
@@ -151,9 +163,9 @@ public class Limbo {
     public synchronized void removeRemovedPlayers(){
         for (Iterator<AwaitingPlayer> iterator = players.iterator(); iterator.hasNext();){
             AwaitingPlayer p = iterator.next();
-            if (p.isRemoved()){
+            if (p.removed){
                 iterator.remove();
-                LOGGER.info("Player {} left limbo", p.getEntity().getGameProfile().getName());
+                LOGGER.info("Player {} left limbo", p.profile.getName());
             }
         }
     }

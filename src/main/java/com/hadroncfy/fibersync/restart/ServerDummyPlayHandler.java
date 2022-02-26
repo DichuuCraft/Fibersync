@@ -71,16 +71,16 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     public ServerDummyPlayHandler(Limbo limbo, AwaitingPlayer player){
         this.player = player;
         this.limbo = limbo;
-        player.getConnection().setPacketListener(this);
+        player.connection.setPacketListener(this);
 
         final PlayerAbilities ab = new PlayerAbilities();
         // ab.allowFlying = true;
         ab.flying = true;
-        player.getConnection().send(new PlayerAbilitiesS2CPacket(ab));
+        player.connection.send(new PlayerAbilitiesS2CPacket(ab));
     }
 
     private void disconnect(Text reason){
-        final ClientConnection connection = player.getConnection();
+        final ClientConnection connection = player.connection;
         connection.send(new DisconnectS2CPacket(reason), future -> {
             connection.disconnect(reason);
         });
@@ -97,20 +97,20 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
               waitingForKeepAlive = true;
               lastKeepAliveTime = l;
               keepAliveId = l;
-              player.getConnection().send(new KeepAliveS2CPacket(keepAliveId));
+              player.connection.send(new KeepAliveS2CPacket(keepAliveId));
            }
         }
     }
 
     @Override
     public void onDisconnected(Text reason) {
-        player.markAsRemoved();
-        LOGGER.info("{} lost connection: {}", player.getEntity().getGameProfile().getName(), reason.asString());
+        player.removed = true;
+        LOGGER.info("{} lost connection: {}", player.profile.getName(), reason.asString());
     }
 
     @Override
     public ClientConnection getConnection() {
-        return player.getConnection();
+        return player.connection;
     }
 
     @Override
@@ -121,7 +121,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     @Override
     public void onChatMessage(ChatMessageC2SPacket packet) {
         final String msg = packet.getChatMessage();
-        Text text = new TranslatableText("chat.type.text", player.getEntity().getGameProfile().getName(), msg);
+        Text text = new TranslatableText("chat.type.text", player.profile.getName(), msg);
         // player.getEntity().networkHandler.onChatMessage(packet);
         limbo.broadcast(text);
     }
@@ -178,7 +178,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     public void onKeepAlive(KeepAliveC2SPacket packet) {
         if (this.waitingForKeepAlive && packet.getId() == this.keepAliveId) {
             this.waitingForKeepAlive = false;
-         } else if (!limbo.getServer().isHost(player.getEntity().getGameProfile())) {
+         } else if (!limbo.getServer().isHost(player.profile)) {
             this.disconnect(new TranslatableText("disconnect.timeout", new Object[0]));
          }
     }

@@ -10,7 +10,6 @@ import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
 
 import net.minecraft.network.MessageType;
-import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 import net.minecraft.util.WorldSavePath;
@@ -123,20 +122,20 @@ public class BackTask extends BaseTask {
                 LOGGER.info("Copying file back from temp dir");
                 CompletableFuture.runAsync(() -> {
                     FileOperationProgressBar progressBar = new FileOperationProgressBar(server, getFormat().fileCopyBarTitle);
+                    cctx.progress_bar.set(progressBar);
                     try {
                         autoBackup.copyTo(currentWorld, progressBar);
                         server.getPlayerManager().broadcast(getFormat().copiedFromTempDir, MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
                     } catch (Exception e1) {
                         e1.printStackTrace();
                         server.getPlayerManager().broadcast(render(getFormat().failedToCopyFromTempDir, e1.toString()), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
-                    }
-                    finally {
+                    } finally {
                         progressBar.done();
+                        cctx.progress_bar.set(null);
                         cctx.endTask();
                     }
                 });
-            }
-            else {
+            } else {
                 cctx.endTask();
             }
         }

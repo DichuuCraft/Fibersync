@@ -5,7 +5,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.backup.BackupInfo;
 import com.hadroncfy.fibersync.command.BackupCommandContext;
@@ -35,7 +34,7 @@ public abstract class BaseTask {
     protected BaseTask(ServerCommandSource src){
         this.src = src;
         this.server = src.getServer();
-        this.cctx = ((IServer)server).getContext();
+        this.cctx = ((IServer)server).getBackupCommandContext();
     }
     public abstract int run();
 
@@ -72,6 +71,7 @@ public abstract class BaseTask {
         server.getPlayerManager().broadcast(render(getFormat().creatingBackup, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
         return CompletableFuture.runAsync(() -> {
             final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().creatingBackupTitle, entry.getInfo().name));
+            cctx.progress_bar.set(progressBar);
             try {
                 Path worldDir = server.getSavePath(WorldSavePath.ROOT);
                 LOGGER.info("world dir: {}", worldDir);
@@ -85,6 +85,7 @@ public abstract class BaseTask {
             } finally {
                 setAutosave(server, autosave);
                 progressBar.done();
+                cctx.progress_bar.set(null);
             }
         });
     } 

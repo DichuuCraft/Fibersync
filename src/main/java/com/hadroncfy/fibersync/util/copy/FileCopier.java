@@ -1,6 +1,5 @@
 package com.hadroncfy.fibersync.util.copy;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -23,6 +22,7 @@ import org.apache.logging.log4j.Logger;
 
 public class FileCopier {
     private static final Logger LOGGER = LogManager.getLogger("File Copy");
+    public final FileSkipMode skip_mode;
     private final Path src;
     private final Path dest;
     private final List<Path> srcFiles = new ArrayList<>();
@@ -33,9 +33,10 @@ public class FileCopier {
     private PathMatcher exclude;
     private long totalSize = 0;
 
-    public FileCopier(Path src, Path dest) {
+    public FileCopier(Path src, Path dest, FileSkipMode skip_mode) {
         this.src = src;
         this.dest = dest;
+        this.skip_mode = skip_mode;
     }
 
     public FileCopier setListener(FileOperationProgressListener listener) {
@@ -49,6 +50,7 @@ public class FileCopier {
     }
 
     private static boolean checkSum(MessageDigest md, Path f1, Path f2) throws IOException {
+        if (Files.size(f1) != Files.size(f2)) return false;
         final byte[] b1 = FileUtil.checkSum(md, f1), b2 = FileUtil.checkSum(md, f2);
         for (int i = 0; i < b1.length; i++) {
             if (b1[i] != b2[i]) {
@@ -58,44 +60,59 @@ public class FileCopier {
         return true;
     }
 
+    public static boolean shoudSkipFile(Path src, Path dest, FileSkipMode mode, MessageDigest md) {
+        try {
+            switch (mode) {
+                default:
+                case NEVER: return false;
+                case CHECKSUM: return checkSum(md, src, dest);
+                case MOTD: return Files.size(src) == Files.size(dest) && Files.getLastModifiedTime(src).equals(Files.getLastModifiedTime(dest));
+            }
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     public long run() throws IOException, NoSuchAlgorithmException {
         var md = MessageDigest.getInstance("md5");
         Files.walkFileTree(src, new SourceFileVisitor());
         Files.walkFileTree(dest, new DestFileVisitor());
 
-        if (listener != null) {
-            listener.start(totalSize);
+        if (this.listener != null) {
+            this.listener.start(totalSize);
         }
 
         for (Path src1 : srcFiles) {
-            final Path dest1 = dest.resolve(src1);
-            src1 = src.resolve(src1);
-            final File src1f = src1.toFile(), dest1f = dest1.toFile();
-            if (dest1f.exists()) {
-                if (dest1f.isDirectory()) {
-                    if (src1f.isFile()) {
+            final Path dest1 =this.dest.resolve(src1);
+            src1 = this.src.resolve(src1);
+            if (Files.exists(dest1)) {
+                if (Files.isDirectory(dest1)) {
+                    if (!Files.isDirectory(src1)) {
                         new FileDeleter(dest1).run();
                     } else {
                         continue;
                     }
                 } else {
-                    if (src1f.isDirectory()) {
+                    if (Files.isDirectory(src1)) {
                         Files.delete(dest1);
-                    } else if (checkSum(md, src1, dest1)) {
+                    } else if (shoudSkipFile(src1, dest1, this.skip_mode, md)) {
                         LOGGER.debug("Skipping non-modified file {}", src1);
-                        if (listener != null){
-                            listener.onFileDone(src1, src1f.length());
+                        if (this.listener != null){
+                            this.listener.onFileDone(src1, Files.size(src1));
                         }
                         continue;
                     }
                 }
             }
 
-            Files.copy(src1, dest1, StandardCopyOption.REPLACE_EXISTING);
-            LOGGER.debug("Copied file (or dir) {} to {}", src1, dest1);
-            
+            final var start = System.currentTimeMillis();
+            Files.copy(src1, dest1, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+            Files.setLastModifiedTime(dest1, Files.getLastModifiedTime(src1));
+            final var elapsed = System.currentTimeMillis() - start;
+            LOGGER.debug("Copied file (or dir) {} to {}, {}M/s", src1, dest1, (double) Files.size(src1) / elapsed / 1000D);
+
             if (listener != null){
-                listener.onFileDone(src1, src1f.length());
+                listener.onFileDone(src1, Files.size(src1));
             }
         }
 
@@ -125,8 +142,7 @@ public class FileCopier {
                 dir = src.relativize(dir).normalize();
                 if (exclude != null && exclude.matches(dir)){
                     return FileVisitResult.SKIP_SUBTREE;
-                }
-                else {
+                } else {
                     srcFiles.add(dir);
                     srcFileSet.add(dir);
                 }

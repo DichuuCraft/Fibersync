@@ -36,7 +36,7 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
         super(string);
     }
 
-    private static final Logger LOGGER = LogManager.getLogger();
+    @Unique private static final Logger LOGGER = LogManager.getLogger();
     @Shadow @Final protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
     @Shadow @Final private Map<DimensionType, ServerWorld> worlds;
     @Shadow @Final protected LevelStorage.Session session;
@@ -58,6 +58,7 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     protected abstract void loadWorldResourcePack();
 
     @Unique private BackupCommandContext commandContext = new BackupCommandContext(() -> this.session.getDirectoryName());
+    @Unique private Limbo limbo;
 
     @Unique private IReloadListener reloadCB;
     @Unique private Runnable tickTask;
@@ -147,7 +148,17 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     }
 
     @Override
-    public BackupCommandContext getContext() {
+    public BackupCommandContext getBackupCommandContext() {
         return commandContext;
+    }
+
+    @Override
+    public Limbo getLimbo() {
+        return this.limbo;
+    }
+
+    @Override
+    public void setLimbo(Limbo limbo) {
+        this.limbo = limbo;
     }
 }

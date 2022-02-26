@@ -1,6 +1,5 @@
 package com.hadroncfy.fibersync.util.copy;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
@@ -31,13 +30,12 @@ public class FileDeleter {
             listener.start(totalSize);
         }
         for (Path p : paths) {
-            final File pf = p.toFile();
-            if (pf.isFile() && listener != null) {
-                listener.onFileDone(p, pf.length());
+            if (!Files.isDirectory(p) && listener != null) {
+                listener.onFileDone(p, Files.size(p));
             }
             Files.delete(p);
         }
-        
+
         if (listener != null) {
             listener.done();
         }

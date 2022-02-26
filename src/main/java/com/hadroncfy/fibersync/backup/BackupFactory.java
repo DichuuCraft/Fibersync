@@ -1,12 +1,10 @@
 package com.hadroncfy.fibersync.backup;
 
-import java.io.File;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -24,18 +22,16 @@ public class BackupFactory {
 
     public BackupEntry getEntry(String name){
         final Path p = dir.get().resolve(name);
-        File infoFile = p.resolve("info.json").toFile();
+        var infoFile = p.resolve("info.json");
         try {
-            if (infoFile.exists()){
-                try (Reader reader = new InputStreamReader(new FileInputStream(infoFile), StandardCharsets.UTF_8)){
+            if (Files.exists(infoFile)) {
+                try (Reader reader = Files.newBufferedReader(infoFile, StandardCharsets.UTF_8)) {
                     return new BackupEntry(p, BackupInfo.GSON.fromJson(reader, BackupInfo.class));
                 }
-            }
-            else {
+            } else {
                 return null;
             }
-        }
-        catch(IOException | JsonParseException e){
+        } catch(IOException | JsonParseException e) {
             return null;
         }
     }

@@ -37,8 +37,8 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
     }
 
     void onPlayerConnected(AwaitingPlayer player){
-        player.getConnection().send(BossBarS2CPacket.add(fileCopyProgressBar));
-        player.getConnection().send(BossBarS2CPacket.add(spawnChunkGenProgressBar));
+        player.connection.send(BossBarS2CPacket.add(fileCopyProgressBar));
+        player.connection.send(BossBarS2CPacket.add(spawnChunkGenProgressBar));
     }
 
     @Override

@@ -24,16 +24,15 @@ public class BackupTask extends BaseTask {
                 if (overwrite != null && overwrite != entry){
                     entry.overwriteTo(overwrite);
                 }
-                doBackup(entry).thenRun(cctx::endTask).exceptionally(e -> {
-                    cctx.endTask();
-                    return null;
-                });
-            } catch(Exception e){
+            } catch(Exception e) {
                 e.printStackTrace();
                 server.getPlayerManager().broadcast(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
-            } finally {
                 cctx.endTask();
             }
+            doBackup(entry).thenRun(cctx::endTask).exceptionally(e -> {
+                cctx.endTask();
+                return null;
+            });
         }
     }
 
@@ -43,8 +42,7 @@ public class BackupTask extends BaseTask {
             if (!overwrite.getInfo().locked){
                 src.sendFeedback(render(getFormat().overwriteAlert, overwrite.getInfo().name), false);
                 cctx.getConfirmationManager().submit(src.getName(), src, this::runCreateBackupTask);
-            }
-            else {
+            } else {
                 src.sendError(getFormat().overwriteFailedLocked);
                 return 0;
             }

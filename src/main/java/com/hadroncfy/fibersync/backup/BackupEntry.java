@@ -1,11 +1,9 @@
 package com.hadroncfy.fibersync.backup;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 
@@ -36,8 +34,7 @@ public class BackupEntry implements Comparable<BackupEntry> {
     }
 
     public void writeInfo() throws IOException {
-        File infoFile = dir.resolve(INFO_JSON).toFile();
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile), StandardCharsets.UTF_8)) {
+        try (Writer writer = Files.newBufferedWriter(this.dir.resolve(INFO_JSON), StandardCharsets.UTF_8)) {
             writer.write(BackupInfo.GSON.toJson(info));
         }
     }
@@ -53,17 +50,18 @@ public class BackupEntry implements Comparable<BackupEntry> {
 
     public void saveBackup(Path worldDir, FileOperationProgressListener listener) throws IOException,
             NoSuchAlgorithmException {
-        File dirFile = dir.toFile();
-        if (!dirFile.exists()) {
-            dirFile.mkdirs();
+        if (FibersyncMod.getConfig().removeTargetDirBeforeCopy) {
+            new FileDeleter(this.dir).run();
+        }
+        if (!Files.exists(this.dir)) {
+            Files.createDirectories(this.dir);
         }
         Path backupDir = dir.resolve(WORLDDIR);
-        File f = backupDir.toFile();
-        if (!f.exists()) {
-            f.mkdirs();
+        if (!Files.exists(backupDir)) {
+            Files.createDirectories(backupDir);
         }
 
-        info.size = new FileCopier(worldDir, backupDir)
+        info.size = new FileCopier(worldDir, backupDir, FibersyncMod.getConfig().fileSkipMode)
             .setExclude(new BackupExcluder(FibersyncMod.getConfig().excludes, 0))
             .setListener(listener)
             .run();
@@ -75,15 +73,11 @@ public class BackupEntry implements Comparable<BackupEntry> {
     }
 
     public void overwriteTo(BackupEntry entry) throws IOException {
-        File f1 = entry.dir.toFile();
-        File dest = entry.dir.resolveSibling(info.name).toFile();
-        if (!f1.renameTo(dest)){
-            throw new IOException("Failed to rename entry " + f1.toString() + " to " + dest.toString());
-        }
+        Files.move(entry.dir, entry.dir.resolveSibling(this.info.name));
     }
 
     public void back(Path worldDir, int mask, FileOperationProgressListener listener) throws NoSuchAlgorithmException, IOException {
-        new FileCopier(dir.resolve(WORLDDIR), worldDir)
+        new FileCopier(dir.resolve(WORLDDIR), worldDir, FibersyncMod.getConfig().fileSkipMode)
             .setExclude(new BackupExcluder(FibersyncMod.getConfig().excludes, mask))
             .setListener(listener)
             .run();
