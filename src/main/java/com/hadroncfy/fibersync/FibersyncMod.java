@@ -11,13 +11,13 @@ import com.google.gson.JsonParseException;
 import com.hadroncfy.fibersync.config.Config;
 import com.hadroncfy.fibersync.config.Formats;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.fabricmc.api.ModInitializer;
 
 public class FibersyncMod implements ModInitializer {
-    private static final Logger LOGGER = LogManager.getLogger();
+    public static final Logger LOGGER = LoggerFactory.getLogger("FibersyncMod");
     private static Config config;
 
     public static void loadConfig() throws IOException, JsonParseException {

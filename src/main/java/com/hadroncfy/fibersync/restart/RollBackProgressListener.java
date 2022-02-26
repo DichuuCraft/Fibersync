@@ -2,10 +2,8 @@ package com.hadroncfy.fibersync.restart;
 
 import java.nio.file.Path;
 
+import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import net.minecraft.entity.boss.BossBar;
 import net.minecraft.entity.boss.ServerBossBar;
@@ -19,7 +17,6 @@ import net.minecraft.world.chunk.ChunkStatus;
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 
 public class RollBackProgressListener extends WorldGenerationProgressLogger implements FileOperationProgressListener {
-    private static final Logger LOGGER = LogManager.getLogger();
     private final Limbo limbo;
     private int loadedChunk;
     private long totalSize, size;
@@ -56,7 +53,7 @@ public class RollBackProgressListener extends WorldGenerationProgressLogger impl
         limbo.sendToAll(BossBarS2CPacket.updateProgress(fileCopyProgressBar));
         int i = (int)(last * 10), j = (int)(now * 10);
         if (i != j){
-            LOGGER.info("Roll back: {}%", j * 10);
+            FibersyncMod.LOGGER.info("Roll back: {}%", j * 10);
         }
     }
 

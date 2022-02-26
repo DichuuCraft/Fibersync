@@ -9,8 +9,8 @@ import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -42,7 +42,7 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
         super(string);
     }
 
-    @Unique private static final Logger LOGGER = LogManager.getLogger();
+    @Unique private static final Logger LOGGER = LoggerFactory.getLogger("name");
 
     @Shadow @Final protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
     @Shadow @Final protected LevelStorage.Session session;

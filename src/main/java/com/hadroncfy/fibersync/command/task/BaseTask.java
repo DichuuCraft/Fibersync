@@ -5,15 +5,13 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.backup.BackupEntry;
 import com.hadroncfy.fibersync.backup.BackupInfo;
 import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.command.FileOperationProgressBar;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
@@ -25,8 +23,6 @@ import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 import static com.hadroncfy.fibersync.config.TextRenderer.render;
 
 public abstract class BaseTask {
-    protected static final Logger LOGGER = LogManager.getLogger();
-
     protected final BackupCommandContext cctx;
     protected final ServerCommandSource src;
     protected final MinecraftServer server;
@@ -74,7 +70,7 @@ public abstract class BaseTask {
             cctx.progress_bar.set(progressBar);
             try {
                 Path worldDir = server.getSavePath(WorldSavePath.ROOT);
-                LOGGER.info("world dir: {}", worldDir);
+                FibersyncMod.LOGGER.info("world dir: {}", worldDir);
 
                 entry.saveBackup(worldDir, progressBar);
                 server.getPlayerManager().broadcast(render(getFormat().backupComplete, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));

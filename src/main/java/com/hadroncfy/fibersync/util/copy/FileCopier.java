@@ -15,13 +15,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.util.FileUtil;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 public class FileCopier {
-    private static final Logger LOGGER = LogManager.getLogger("File Copy");
     public final FileSkipMode skip_mode;
     private final Path src;
     private final Path dest;
@@ -96,7 +93,7 @@ public class FileCopier {
                     if (Files.isDirectory(src1)) {
                         Files.delete(dest1);
                     } else if (shoudSkipFile(src1, dest1, this.skip_mode, md)) {
-                        LOGGER.debug("Skipping non-modified file {}", src1);
+                        FibersyncMod.LOGGER.debug("Skipping non-modified file {}", src1);
                         if (this.listener != null){
                             this.listener.onFileDone(src1, Files.size(src1));
                         }
@@ -109,7 +106,7 @@ public class FileCopier {
             Files.copy(src1, dest1, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             Files.setLastModifiedTime(dest1, Files.getLastModifiedTime(src1));
             final var elapsed = System.currentTimeMillis() - start;
-            LOGGER.debug("Copied file (or dir) {} to {}, {}M/s", src1, dest1, (double) Files.size(src1) / elapsed / 1000D);
+            FibersyncMod.LOGGER.debug("Copied file (or dir) {} to {}, {}M/s", src1, dest1, (double) Files.size(src1) / elapsed / 1000D);
 
             if (listener != null){
                 listener.onFileDone(src1, Files.size(src1));
@@ -119,7 +116,7 @@ public class FileCopier {
         for (Path dest1 : destFiles) {
             if (!srcFileSet.contains(dest1)) {
                 Files.delete(dest.resolve(dest1));
-                LOGGER.debug("deleted redundant file {}", dest1);
+                FibersyncMod.LOGGER.debug("deleted redundant file {}", dest1);
             }
         }
 

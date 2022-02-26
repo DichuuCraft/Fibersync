@@ -1,7 +1,6 @@
 package com.hadroncfy.fibersync.restart;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.hadroncfy.fibersync.FibersyncMod;
 
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.network.ClientConnection;
@@ -59,7 +58,6 @@ import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Util;
 
 public class ServerDummyPlayHandler implements ServerPlayPacketListener {
-    private static final Logger LOGGER = LogManager.getLogger();
     private final AwaitingPlayer player;
     private final Limbo limbo;
 
@@ -105,7 +103,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     @Override
     public void onDisconnected(Text reason) {
         player.removed = true;
-        LOGGER.info("{} lost connection: {}", player.profile.getName(), reason.asString());
+        FibersyncMod.LOGGER.info("{} lost connection: {}", player.profile.getName(), reason.asString());
     }
 
     @Override

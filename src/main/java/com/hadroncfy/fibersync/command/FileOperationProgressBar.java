@@ -4,10 +4,8 @@ import java.nio.file.Path;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import net.minecraft.entity.boss.ServerBossBar;
 import net.minecraft.entity.boss.BossBar.Color;
@@ -17,7 +15,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
 public class FileOperationProgressBar implements FileOperationProgressListener {
-    private static final Logger LOGGER = LogManager.getLogger();
     private long totalSize = 0, size = 0;
     private final ServerBossBar progressBar;
 
@@ -48,7 +45,7 @@ public class FileOperationProgressBar implements FileOperationProgressListener {
         progressBar.setPercent(now);
         int i = (int)(last * 10), j = (int)(now * 10);
         if (i != j){
-            LOGGER.info("Copying file: {}%", j * 10);
+            FibersyncMod.LOGGER.info("Copying file: {}%", j * 10);
         }
     }
 

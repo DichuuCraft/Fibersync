@@ -61,7 +61,7 @@ public class BackTask extends BaseTask {
 
             autoBackup = currentWorld;
             if (selected.collides(currentWorld)) {
-                LOGGER.info("Backup to temp dir since we are rolling back to oldworld");
+                FibersyncMod.LOGGER.info("Backup to temp dir since we are rolling back to oldworld");
                 autoBackup = autoBackup.createAtNewDir(getConfig().tempDir);
             }
 
@@ -119,7 +119,7 @@ public class BackTask extends BaseTask {
         public void onReloadDone() {
             server.getPlayerManager().broadcast(getFinishedText(), MessageType.SYSTEM, getSourceUUID(BackTask.this.src));
             if (autoBackup != currentWorld){
-                LOGGER.info("Copying file back from temp dir");
+                FibersyncMod.LOGGER.info("Copying file back from temp dir");
                 CompletableFuture.runAsync(() -> {
                     FileOperationProgressBar progressBar = new FileOperationProgressBar(server, getFormat().fileCopyBarTitle);
                     cctx.progress_bar.set(progressBar);

@@ -8,13 +8,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.interfaces.IPlayer;
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.network.MessageType;
@@ -37,7 +35,6 @@ import net.minecraft.world.World;
 import net.minecraft.world.dimension.DimensionType;
 
 public class Limbo {
-    private static final Logger LOGGER = LogManager.getLogger();
     public final Set<RegistryKey<World>> world_keys;
     private final List<AwaitingPlayer> players = new ArrayList<>();
     private final MinecraftServer server;
@@ -100,7 +97,7 @@ public class Limbo {
         p.connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0, true));
         rollBackProgressListener.onPlayerConnected(p);
         
-        LOGGER.info("Player {} joined limbo", p.profile.getName());
+        FibersyncMod.LOGGER.info("Player {} joined limbo", p.profile.getName());
         addPlayer(p);
     }
 
@@ -121,7 +118,7 @@ public class Limbo {
         ((IServer) this.server).setLimbo(null);
 
         if (server.isSingleplayer() && players.isEmpty()){
-            LOGGER.info("Stopping server as the server has no players");
+            FibersyncMod.LOGGER.info("Stopping server as the server has no players");
             // server.stop(true);
         } else {
             pm.setShouldRefreshScreen(true);
@@ -165,7 +162,7 @@ public class Limbo {
             AwaitingPlayer p = iterator.next();
             if (p.removed){
                 iterator.remove();
-                LOGGER.info("Player {} left limbo", p.profile.getName());
+                FibersyncMod.LOGGER.info("Player {} left limbo", p.profile.getName());
             }
         }
     }

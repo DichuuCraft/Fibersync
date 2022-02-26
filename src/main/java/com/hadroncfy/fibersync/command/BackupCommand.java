@@ -28,8 +28,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import net.minecraft.command.argument.MessageArgumentType;
 import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
@@ -43,7 +41,6 @@ import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 import static com.hadroncfy.fibersync.FibersyncMod.getConfig;
 
 public class BackupCommand {
-    private static final Logger LOGGER = LogManager.getLogger();
     public static final String NAME = "fs";
 
     private static final String ARG_DESC = "description";

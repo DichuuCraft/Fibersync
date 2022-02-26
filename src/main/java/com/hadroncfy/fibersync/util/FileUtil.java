@@ -9,11 +9,10 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.hadroncfy.fibersync.FibersyncMod;
+
 
 public class FileUtil {
-    private static final Logger LOGGER = LogManager.getLogger("File Util");
     public static byte[] checkSum(MessageDigest md, Path f1) throws IOException {
         final var start = System.currentTimeMillis();
         long total = 0;
@@ -27,7 +26,7 @@ public class FileUtil {
             }
 
             final var elapsed = System.currentTimeMillis() - start;
-            LOGGER.debug("check sum read file elapsed {}ms, {}M/s", elapsed, (double)total / elapsed / 1000D);
+            FibersyncMod.LOGGER.debug("check sum read file elapsed {}ms, {}M/s", elapsed, (double)total / elapsed / 1000D);
             return md.digest();
         }
     }
