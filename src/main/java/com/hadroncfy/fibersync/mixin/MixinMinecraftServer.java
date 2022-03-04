@@ -6,6 +6,7 @@ import java.util.function.BooleanSupplier;
 
 import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.interfaces.IServer;
+import com.hadroncfy.fibersync.interfaces.IServerChunkManager;
 import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
 
@@ -140,6 +141,10 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
 
             reloadCB.onReloadDone();
             reloadCB = null;
+
+            for (var world: this.worlds.values()) {
+                ((IServerChunkManager) world.getChunkManager()).fsModSetupSpawnInfo();
+            }
         }
     }
 

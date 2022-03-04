@@ -11,7 +11,8 @@
       "ContainerAccessor",
       "MixinServerPlayNetworkHandler",
       "MixinServerPlayerEntity",
-      "MixinServerLoginNetworkHandler"
+      "MixinServerLoginNetworkHandler",
+      "MixinServerChunkManager"
     ],
     "client": [
     ],
