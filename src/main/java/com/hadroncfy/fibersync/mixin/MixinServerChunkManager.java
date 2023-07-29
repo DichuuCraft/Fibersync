@@ -3,6 +3,7 @@ package com.hadroncfy.fibersync.mixin;
 import java.util.function.Consumer;
 
 import com.hadroncfy.fibersync.interfaces.IServerChunkManager;
+import com.hadroncfy.fibersync.interfaces.Unit;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,7 +28,7 @@ public abstract class MixinServerChunkManager implements IServerChunkManager {
     abstract void ifChunkLoaded(long pos, Consumer<WorldChunk> chunkConsumer);
 
     @Override
-    public void fsModSetupSpawnInfo() {
+    public void setupSpawnInfo(Unit u) {
         this.spawnInfo = SpawnHelper.setupSpawn(this.ticketManager.getTickedChunkCount(), this.world.iterateEntities(), this::ifChunkLoaded, new SpawnDensityCapper(this.threadedAnvilChunkStorage));
     }
 }

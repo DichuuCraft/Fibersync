@@ -7,7 +7,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.function.Supplier;
 
-import com.hadroncfy.fibersync.config.Config;
 import com.hadroncfy.fibersync.config.Formats;
 
 import net.minecraft.server.command.ServerCommandSource;
@@ -17,17 +16,17 @@ public class ConfirmationManager {
     private final Map<String, ConfirmationEntry> confirms = new HashMap<>();
     private final long timeout;
     private final int confirmCodeBound;
-    private final Supplier<Config> cProvider;
+    private final Supplier<Formats> cProvider;
     private static final Random random = new Random();
 
-    public ConfirmationManager(Supplier<Config> p, long timeout, int confirmCodeBound){
+    public ConfirmationManager(Supplier<Formats> p, long timeout, int confirmCodeBound){
         cProvider = p;
         this.timeout = timeout;
         this.confirmCodeBound = confirmCodeBound;
     }
 
     private Formats getFormat(){
-        return cProvider.get().formats;
+        return cProvider.get();
     }
 
     public synchronized void submit(String label, ServerCommandSource sender, ConfirmationHandler h){
@@ -36,7 +35,7 @@ public class ConfirmationManager {
         if (entry != null){
             entry.cancel();
         }
-        sender.sendFeedback(render(getFormat().confirmationHint, Integer.toString(code)), false);
+        sender.sendFeedback(() -> render(getFormat().confirmationHint, Integer.toString(code)), false);
     }
 
     public synchronized boolean confirm(String label, int code){
@@ -60,7 +59,7 @@ public class ConfirmationManager {
         if (h != null){
             h.t.cancel();
             confirms.remove(label);
-            h.sender.sendFeedback(getFormat().opCancelled, false);
+            h.sender.sendFeedback(() -> getFormat().opCancelled, false);
             return true;
         }
         return false;
@@ -90,7 +89,7 @@ public class ConfirmationManager {
         public void run() {
             synchronized(ConfirmationManager.this){
                 confirms.remove(label);
-                sender.sendFeedback(getFormat().opCancelled, false);
+                sender.sendFeedback(() -> getFormat().opCancelled, false);
             }
         }
     }

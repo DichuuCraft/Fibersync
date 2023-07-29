@@ -1,6 +1,5 @@
 package com.hadroncfy.fibersync.interfaces;
 
-public interface IPlayer {
+public interface IServerScoreboard {
     void reset(Unit u);
-    void resetWorld(Unit u);
 }

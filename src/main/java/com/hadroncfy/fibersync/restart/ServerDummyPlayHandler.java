@@ -4,6 +4,7 @@ import com.hadroncfy.fibersync.FibersyncMod;
 
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.network.ClientConnection;
+import net.minecraft.network.PacketCallbacks;
 import net.minecraft.network.listener.ServerPlayPacketListener;
 import net.minecraft.network.packet.c2s.play.AdvancementTabC2SPacket;
 import net.minecraft.network.packet.c2s.play.BoatPaddleStateC2SPacket;
@@ -15,12 +16,14 @@ import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
+import net.minecraft.network.packet.c2s.play.CommandExecutionC2SPacket;
 import net.minecraft.network.packet.c2s.play.CraftRequestC2SPacket;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.JigsawGeneratingC2SPacket;
 import net.minecraft.network.packet.c2s.play.KeepAliveC2SPacket;
+import net.minecraft.network.packet.c2s.play.MessageAcknowledgmentC2SPacket;
 import net.minecraft.network.packet.c2s.play.PickFromInventoryC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayPongC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
@@ -29,6 +32,7 @@ import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerSessionC2SPacket;
 import net.minecraft.network.packet.c2s.play.QueryBlockNbtC2SPacket;
 import net.minecraft.network.packet.c2s.play.QueryEntityNbtC2SPacket;
 import net.minecraft.network.packet.c2s.play.RecipeBookDataC2SPacket;
@@ -54,7 +58,6 @@ import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.play.KeepAliveS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
 import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Util;
 
 public class ServerDummyPlayHandler implements ServerPlayPacketListener {
@@ -79,9 +82,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     private void disconnect(Text reason){
         final ClientConnection connection = player.connection;
-        connection.send(new DisconnectS2CPacket(reason), future -> {
-            connection.disconnect(reason);
-        });
+        connection.send(new DisconnectS2CPacket(reason), PacketCallbacks.always(() -> connection.disconnect(reason)));
         connection.disableAutoRead();
         connection.handleDisconnection();
     }
@@ -90,7 +91,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
         long l = Util.getMeasuringTimeMs();
         if (l - lastKeepAliveTime >= 15000L) {
            if (waitingForKeepAlive) {
-              this.disconnect(new TranslatableText("disconnect.timeout", new Object[0]));
+              this.disconnect(Text.translatable("disconnect.timeout", new Object[0]));
            } else {
               waitingForKeepAlive = true;
               lastKeepAliveTime = l;
@@ -103,12 +104,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     @Override
     public void onDisconnected(Text reason) {
         player.removed = true;
-        FibersyncMod.LOGGER.info("{} lost connection: {}", player.profile.getName(), reason.asString());
-    }
-
-    @Override
-    public ClientConnection getConnection() {
-        return player.connection;
+        FibersyncMod.LOGGER.info("{} lost connection: {}", player.profile.getName(), reason.getString());
     }
 
     @Override
@@ -118,8 +114,8 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onChatMessage(ChatMessageC2SPacket packet) {
-        final String msg = packet.getChatMessage();
-        Text text = new TranslatableText("chat.type.text", player.profile.getName(), msg);
+        final String msg = packet.chatMessage();
+        Text text = Text.translatable("chat.type.text", player.profile.getName(), msg);
         // player.getEntity().networkHandler.onChatMessage(packet);
         limbo.broadcast(text);
     }
@@ -177,7 +173,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
         if (this.waitingForKeepAlive && packet.getId() == this.keepAliveId) {
             this.waitingForKeepAlive = false;
          } else if (!limbo.getServer().isHost(player.profile)) {
-            this.disconnect(new TranslatableText("disconnect.timeout", new Object[0]));
+            this.disconnect(Text.translatable("disconnect.timeout", new Object[0]));
          }
     }
 
@@ -383,6 +379,30 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     public void onPong(PlayPongC2SPacket packet) {
         // TODO Auto-generated method stub
         
+    }
+
+    @Override
+    public boolean isConnectionOpen() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'isConnectionOpen'");
+    }
+
+    @Override
+    public void onCommandExecution(CommandExecutionC2SPacket var1) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'onCommandExecution'");
+    }
+
+    @Override
+    public void onMessageAcknowledgment(MessageAcknowledgmentC2SPacket var1) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'onMessageAcknowledgment'");
+    }
+
+    @Override
+    public void onPlayerSession(PlayerSessionC2SPacket var1) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'onPlayerSession'");
     }
 
 }

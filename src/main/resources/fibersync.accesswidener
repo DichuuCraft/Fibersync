@@ -1,3 +1,6 @@
 accessWidener	v1	named
 accessible field net/minecraft/util/thread/ThreadExecutor tasks Ljava/util/Queue;
 accessible field net/minecraft/util/thread/ThreadExecutor executionsInProgress I
+accessible field net/minecraft/server/network/ServerPlayNetworkHandler connection Lnet/minecraft/network/ClientConnection;
+accessible method net/minecraft/entity/Entity setWorld (Lnet/minecraft/world/World;)V
+accessible method net/minecraft/server/MinecraftServer createDataPackSettings (Lnet/minecraft/resource/ResourcePackManager;)Lnet/minecraft/resource/DataPackSettings;

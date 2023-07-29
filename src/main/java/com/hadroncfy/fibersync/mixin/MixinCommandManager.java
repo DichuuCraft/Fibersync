@@ -10,7 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.server.command.CommandManager;
+import net.minecraft.server.command.CommandManager.RegistrationEnvironment;
 import net.minecraft.server.command.ServerCommandSource;
 
 @Mixin(CommandManager.class)
@@ -20,7 +22,7 @@ public class MixinCommandManager {
     private CommandDispatcher<ServerCommandSource> dispatcher;
 
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void onRegister(CommandManager.RegistrationEnvironment environment, CallbackInfo ci) {
+    private void onRegister(RegistrationEnvironment environment, CommandRegistryAccess commandRegistryAccess, CallbackInfo ci) {
         BackupCommand.register(dispatcher);
     }
 }

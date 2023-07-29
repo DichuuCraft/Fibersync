@@ -9,10 +9,10 @@ import com.mojang.brigadier.ImmutableStringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 
-import net.minecraft.text.TranslatableText;
+import net.minecraft.text.Text;
 
 public abstract class VarArgParser {
-    private static final SimpleCommandExceptionType COMMAND_EXCEPTION = new SimpleCommandExceptionType(new TranslatableText("command.unknown.argument"));
+    private static final SimpleCommandExceptionType COMMAND_EXCEPTION = new SimpleCommandExceptionType(Text.translatable("command.unknown.argument"));
     protected abstract char getDelimiter();
 
     private final String[] words;

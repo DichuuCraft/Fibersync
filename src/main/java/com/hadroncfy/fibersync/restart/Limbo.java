@@ -5,8 +5,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 import com.hadroncfy.fibersync.FibersyncMod;
 import com.hadroncfy.fibersync.interfaces.IPlayer;
@@ -15,24 +15,21 @@ import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
 import net.minecraft.entity.player.PlayerAbilities;
-import net.minecraft.network.MessageType;
-import net.minecraft.network.Packet;
+import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
-import net.minecraft.util.registry.Registry;
-import net.minecraft.util.registry.RegistryKey;
-import net.minecraft.util.registry.DynamicRegistryManager.Impl;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
-import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.world.dimension.DimensionTypes;
 
 public class Limbo {
     public final Set<RegistryKey<World>> world_keys;
@@ -77,14 +74,16 @@ public class Limbo {
                 GameMode.SPECTATOR,
                 GameMode.SPECTATOR,
                 this.world_keys,
-                (Impl) this.server.getRegistryManager(),
-                this.server.getRegistryManager().get(Registry.DIMENSION_TYPE_KEY).get(DimensionType.OVERWORLD_ID),
+                this.server.getRegistryManager(),
+                DimensionTypes.OVERWORLD,
                 World.OVERWORLD,
-                0,
+                0L,
                 20,
                 10,
                 10,
-                false, false, false, false
+                false, false, false, false,
+                Optional.empty(),
+                0
             ));
         }
         PlayerAbilities abilities = new PlayerAbilities();
@@ -94,9 +93,9 @@ public class Limbo {
         abilities.flying = true;
         abilities.creativeMode = false;
         p.connection.send(new PlayerAbilitiesS2CPacket(abilities));
-        p.connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0, true));
+        p.connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0));
         rollBackProgressListener.onPlayerConnected(p);
-        
+
         FibersyncMod.LOGGER.info("Player {} joined limbo", p.profile.getName());
         addPlayer(p);
     }
@@ -114,14 +113,14 @@ public class Limbo {
 
         rollBackProgressListener.end();
 
-        pm.fsModReset();
+        pm.reset(null);
         ((IServer) this.server).setLimbo(null);
 
         if (server.isSingleplayer() && players.isEmpty()){
             FibersyncMod.LOGGER.info("Stopping server as the server has no players");
             // server.stop(true);
         } else {
-            pm.setShouldRefreshScreen(true);
+            pm.setShouldRefreshScreen(null, true);
             for (AwaitingPlayer player : players) {
                 // we can't just create a new ServerPlayerEntity here since the original player
                 // may
@@ -133,11 +132,11 @@ public class Limbo {
                     playerEntity = playerManager.createPlayer(player.profile);
                 }
                 playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
-                ((IPlayer)playerEntity).reset();
+                ((IPlayer)playerEntity).reset(null);
 
                 playerManager.onPlayerConnect(player.connection, playerEntity);
             }
-            pm.setShouldRefreshScreen(false);
+            pm.setShouldRefreshScreen(null, false);
         }
         players.clear();
     }
@@ -149,7 +148,7 @@ public class Limbo {
     }
 
     public void broadcast(Text txt){
-        sendToAll(new GameMessageS2CPacket(txt, MessageType.CHAT, new UUID(0, 0)));
+        sendToAll(new GameMessageS2CPacket(txt, false));
     }
 
     public void tick() {

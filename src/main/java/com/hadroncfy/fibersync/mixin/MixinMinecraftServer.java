@@ -7,6 +7,7 @@ import java.util.function.BooleanSupplier;
 import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.interfaces.IServerChunkManager;
+import com.hadroncfy.fibersync.interfaces.IServerScoreboard;
 import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
 
@@ -22,7 +23,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.resource.ServerResourceManager;
+import net.minecraft.registry.CombinedDynamicRegistries;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.registry.ServerDynamicRegistryType;
+import net.minecraft.resource.DataConfiguration;
+import net.minecraft.resource.ResourcePackManager;
 import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerNetworkIo;
@@ -30,8 +36,6 @@ import net.minecraft.server.ServerTask;
 import net.minecraft.server.WorldGenerationProgressListener;
 import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.dynamic.RegistryOps;
-import net.minecraft.util.registry.DynamicRegistryManager;
 import net.minecraft.util.thread.ReentrantThreadExecutor;
 import net.minecraft.world.SaveProperties;
 import net.minecraft.world.dimension.DimensionType;
@@ -48,15 +52,15 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     @Shadow @Final protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
     @Shadow @Final protected LevelStorage.Session session;
     @Shadow @Final private ServerNetworkIo networkIo;
-    @Shadow @Final protected DynamicRegistryManager.Impl registryManager;
-    @Shadow private ServerResourceManager serverResourceManager;
+    @Shadow @Final private ResourcePackManager dataPackManager;
     @Shadow private int ticks;
     @Shadow private volatile boolean running;
 
     // things that needs reseting
     @Shadow @Final private Map<DimensionType, ServerWorld> worlds;
-    @Shadow @Mutable private ServerScoreboard scoreboard;
+    @Shadow @Final private ServerScoreboard scoreboard;
     @Shadow @Mutable protected SaveProperties saveProperties;
+    @Shadow @Mutable private CombinedDynamicRegistries<ServerDynamicRegistryType> combinedDynamicRegistries;
 
     @Shadow
     public abstract void prepareStartRegion(WorldGenerationProgressListener worldGenerationProgressListener);
@@ -66,9 +70,6 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
 
     @Shadow
     protected abstract void updateDifficulty(); // setDifficulty
-
-    @Shadow
-    protected abstract void loadWorldResourcePack();
 
     @Unique private BackupCommandContext commandContext = new BackupCommandContext(() -> this.session.getDirectoryName());
     @Unique private Limbo limbo;
@@ -81,10 +82,9 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     // cannot directly call original loadWorld since other mods might mixin into this method
     @Unique
     private void loadWorld(WorldGenerationProgressListener startRegionListener) {
-        this.loadWorldResourcePack();
-        createWorlds(startRegionListener);
+        this.createWorlds(startRegionListener);
         this.updateDifficulty();
-        prepareStartRegion(startRegionListener);
+        this.prepareStartRegion(startRegionListener);
     }
 
 
@@ -143,18 +143,19 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
             reloadCB = null;
 
             for (var world: this.worlds.values()) {
-                ((IServerChunkManager) world.getChunkManager()).fsModSetupSpawnInfo();
+                ((IServerChunkManager) world.getChunkManager()).setupSpawnInfo(null);
             }
         }
     }
 
     @Unique
     private void resetServer() {
-        this.scoreboard = new ServerScoreboard((MinecraftServer)(Object)this);
-        var registry_ops = RegistryOps.ofLoaded(NbtOps.INSTANCE, this.serverResourceManager.getResourceManager(), this.registryManager);
-        var props = this.session.readLevelProperties(registry_ops, this.session.getDataPackSettings());
+        ((IServerScoreboard) this.scoreboard).reset(null);
+        var dataConfig = new DataConfiguration(MinecraftServer.createDataPackSettings(this.dataPackManager), this.saveProperties.getEnabledFeatures());
+        var reg = this.combinedDynamicRegistries.getCombinedRegistryManager();
+        var props = this.session.readLevelProperties(RegistryOps.of(NbtOps.INSTANCE, reg), dataConfig, reg.get(RegistryKeys.DIMENSION), reg.getRegistryLifecycle());
         if (props != null) {
-            this.saveProperties = props;
+            this.saveProperties = props.getFirst();
         } else {
             LOGGER.warn("failed to reload save properties");
         }

@@ -11,9 +11,7 @@ import com.hadroncfy.fibersync.backup.BackupInfo;
 import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.command.FileOperationProgressBar;
 import com.hadroncfy.fibersync.interfaces.IServer;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
-import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.world.ServerWorld;
@@ -50,7 +48,7 @@ public abstract class BaseTask {
     public static UUID getSourceUUID(ServerCommandSource src) {
         try {
             return src.getPlayer().getUuid();
-        } catch (CommandSyntaxException e) {
+        } catch (Exception e) {
             //
             return BackupInfo.CONSOLE_UUID;
         }
@@ -64,7 +62,7 @@ public abstract class BaseTask {
 
         String name = entry.getInfo().name;
         String senderName = src.getName();
-        server.getPlayerManager().broadcast(render(getFormat().creatingBackup, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
+        server.getPlayerManager().broadcast(render(getFormat().creatingBackup, senderName, name), false);
         return CompletableFuture.runAsync(() -> {
             final FileOperationProgressBar progressBar = new FileOperationProgressBar(server, render(getFormat().creatingBackupTitle, entry.getInfo().name));
             cctx.progress_bar.set(progressBar);
@@ -73,10 +71,10 @@ public abstract class BaseTask {
                 FibersyncMod.LOGGER.info("world dir: {}", worldDir);
 
                 entry.saveBackup(worldDir, progressBar);
-                server.getPlayerManager().broadcast(render(getFormat().backupComplete, senderName, name), MessageType.SYSTEM, getSourceUUID(this.src));
+                server.getPlayerManager().broadcast(render(getFormat().backupComplete, senderName, name), false);
             } catch (Exception e) {
                 e.printStackTrace();
-                server.getPlayerManager().broadcast(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
+                server.getPlayerManager().broadcast(render(getFormat().backupFailed, senderName, e), false);
                 throw new CompletionException(e);
             } finally {
                 setAutosave(server, autosave);

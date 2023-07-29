@@ -4,7 +4,6 @@ import com.hadroncfy.fibersync.backup.BackupEntry;
 import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 import static com.hadroncfy.fibersync.config.TextRenderer.render;
 
-import net.minecraft.network.MessageType;
 import net.minecraft.server.command.ServerCommandSource;
 
 public class BackupTask extends BaseTask {
@@ -26,7 +25,7 @@ public class BackupTask extends BaseTask {
                 }
             } catch(Exception e) {
                 e.printStackTrace();
-                server.getPlayerManager().broadcast(render(getFormat().backupFailed, senderName, e), MessageType.SYSTEM, getSourceUUID(this.src));
+                server.getPlayerManager().broadcast(render(getFormat().backupFailed, senderName, e), false);
                 cctx.endTask();
             }
             doBackup(entry).thenRun(cctx::endTask).exceptionally(e -> {
@@ -40,7 +39,7 @@ public class BackupTask extends BaseTask {
     public int run(){
         if (overwrite != null) {
             if (!overwrite.getInfo().locked){
-                src.sendFeedback(render(getFormat().overwriteAlert, overwrite.getInfo().name), false);
+                src.sendFeedback(() -> render(getFormat().overwriteAlert, overwrite.getInfo().name), false);
                 cctx.getConfirmationManager().submit(src.getName(), src, this::runCreateBackupTask);
             } else {
                 src.sendError(getFormat().overwriteFailedLocked);

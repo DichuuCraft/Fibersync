@@ -29,7 +29,6 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 import net.minecraft.command.argument.MessageArgumentType;
-import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 
@@ -142,7 +141,7 @@ public class BackupCommand {
         final ServerCommandSource src = ctx.getSource();
         try {
             FibersyncMod.loadConfig();
-            src.sendFeedback(getFormat().reloadedConfig, true);
+            src.sendFeedback(() -> getFormat().reloadedConfig, true);
             return 0;
         } catch (Exception e) {
             src.sendError(render(getFormat().failedToLoadConfig, e.toString()));
@@ -166,7 +165,7 @@ public class BackupCommand {
         if (cctx.hasCountDownTask()) {
             cctx.cancelCountDownTask();
             src.getServer().getPlayerManager()
-                    .broadcast(render(getFormat().rollbackAborted, src.getName()), MessageType.CHAT, getSourceUUID(ctx));
+                    .broadcast(render(getFormat().rollbackAborted, src.getName()), false);
             return 0;
         } else {
             if (!cctx.getConfirmationManager().cancel(ctx.getSource().getName())) {
@@ -180,7 +179,7 @@ public class BackupCommand {
     public static UUID getSourceUUID(CommandContext<ServerCommandSource> ctx) {
         try {
             return ctx.getSource().getPlayer().getUuid();
-        } catch (CommandSyntaxException e) {
+        } catch (Exception e) {
             //
             return BackupInfo.CONSOLE_UUID;
         }
@@ -206,15 +205,15 @@ public class BackupCommand {
                 cctx.progress_bar.set(progressBar);
                 try {
                     server.getPlayerManager().broadcast(
-                        render(getFormat().deletingBackup, src.getName(), b.getInfo().name), MessageType.CHAT, getSourceUUID(ctx));
+                        render(getFormat().deletingBackup, src.getName(), b.getInfo().name), false);
                     b.delete(progressBar);
                     server.getPlayerManager().broadcast(
-                        render(getFormat().deletedBackup, src.getName(), b.getInfo().name), MessageType.CHAT, getSourceUUID(ctx));
+                        render(getFormat().deletedBackup, src.getName(), b.getInfo().name), false);
                 } catch (Exception e) {
                     e.printStackTrace();
                     server.getPlayerManager().broadcast(
                         render(getFormat().failedToDeletedBackup, src.getName(), b.getInfo().name, e.toString()),
-                    MessageType.CHAT, getSourceUUID(ctx));
+                    false);
                 } finally {
                     progressBar.done();
                     cctx.endTask();
@@ -239,12 +238,14 @@ public class BackupCommand {
                 entry.getInfo().locked = locked;
                 entry.writeInfo();
                 server.getPlayerManager()
-                        .broadcast(render(locked ? getFormat().lockedBackup : getFormat().unlockedBackup,
-                                src.getName(), entry.getInfo().name), MessageType.CHAT, getSourceUUID(ctx));
+                        .broadcast(
+                            render(locked ? getFormat().lockedBackup : getFormat().unlockedBackup, src.getName(), entry.getInfo().name),
+                            false
+                        );
             } catch (Exception e) {
                 e.printStackTrace();
                 server.getPlayerManager().broadcast(
-                        render(getFormat().failedToWriteInfo, src.getName(), e.toString()), MessageType.CHAT, getSourceUUID(ctx));
+                        render(getFormat().failedToWriteInfo, src.getName(), e.toString()), false);
             } finally {
                 cctx.endTask();
             }
@@ -285,7 +286,7 @@ public class BackupCommand {
         final List<BackupEntry> entries = cctx.getBackupFactory().getBackups();
         final int maxBackups = getConfig().maxBackupCount;
 
-        final String description = tryGetArg(() -> MessageArgumentType.getMessage(ctx, ARG_DESC).asString(), () -> "");
+        final String description = tryGetArg(() -> MessageArgumentType.getMessage(ctx, ARG_DESC).getString(), () -> "");
         BackupEntry overwrite = null;
 
         final String name = tryGetArg(() -> StringArgumentType.getString(ctx, ARG_NAME), () -> getEmptyBackupName("b", entries));
@@ -350,16 +351,17 @@ public class BackupCommand {
                     totalSize += entry.totalSize();
                 }
 
-                src.sendFeedback(isMirror ? getFormat().mirrorListTitle : getFormat().backupListTitle, false);
+                src.sendFeedback(() -> isMirror ? getFormat().mirrorListTitle : getFormat().backupListTitle, false);
                 for (BackupEntry entry: entries){
-                    src.sendFeedback(render(
+                    src.sendFeedback(() -> render(
                         entry.getInfo().locked ? getFormat().lockedBackupListItem : getFormat().backupListItem,
                         entry.getInfo().name,
                         entry.getInfo().description,
                         getConfig().dateFormat.format(entry.getInfo().date)
                     ), false);
                 }
-                src.sendFeedback(render(getFormat().backupListFooter, String.format("%.2f", (float)totalSize / 1024 / 1024)), false);
+                final long totalSize2 = totalSize;
+                src.sendFeedback(() -> render(getFormat().backupListFooter, String.format("%.2f", (float)totalSize2 / 1024 / 1024)), false);
             } catch(Exception e) {
                 src.sendError(render(getFormat().failedToRetrieveList, e.toString()));
                 e.printStackTrace();

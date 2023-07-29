@@ -1,6 +1,7 @@
 package com.hadroncfy.fibersync.mixin;
 
 import com.hadroncfy.fibersync.interfaces.IPlayer;
+import com.hadroncfy.fibersync.interfaces.Unit;
 import com.mojang.authlib.GameProfile;
 
 import org.spongepowered.asm.mixin.Final;
@@ -34,11 +35,16 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity implements IP
     private PlayerAdvancementTracker advancementTracker;
 
     @Override
-    public void reset() {
+    public void reset(Unit u) {
         this.unsetRemoved();
         recipeBook = new ServerRecipeBook();
         statHandler = server.getPlayerManager().createStatHandler((ServerPlayerEntity)(Object)this);
         advancementTracker = server.getPlayerManager().getAdvancementTracker((ServerPlayerEntity)(Object)this);
         ((ContainerAccessor)currentScreenHandler).getListeners().clear();// avoid inventory desync
+    }
+
+    @Override
+    public void resetWorld(Unit u) {
+        this.setWorld(null);
     }
 }

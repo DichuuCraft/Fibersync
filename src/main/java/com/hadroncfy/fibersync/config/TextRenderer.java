@@ -6,7 +6,6 @@ import java.util.regex.Pattern;
 
 import com.hadroncfy.fibersync.util.Replacer;
 
-import net.minecraft.text.LiteralText;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 
@@ -27,7 +26,7 @@ public class TextRenderer extends AbstractTextRenderer<TextRenderer> implements 
 
     @Override
     protected MutableText renderString(String s) {
-        return new LiteralText(Replacer.replaceAll(VAL_EXP, s, this));
+        return Text.literal(Replacer.replaceAll(VAL_EXP, s, this));
     }
 
     @Override

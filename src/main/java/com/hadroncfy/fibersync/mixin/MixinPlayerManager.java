@@ -1,10 +1,12 @@
 package com.hadroncfy.fibersync.mixin;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
 import com.hadroncfy.fibersync.interfaces.IServer;
+import com.hadroncfy.fibersync.interfaces.Unit;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,11 +23,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.stat.ServerStatHandler;
-import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.source.BiomeAccess;
-import net.minecraft.world.dimension.DimensionType;
 
 @Mixin(PlayerManager.class)
 public class MixinPlayerManager implements IPlayerManager {
@@ -37,15 +37,14 @@ public class MixinPlayerManager implements IPlayerManager {
 
     @Inject(method = "onPlayerConnect", at = @At(
         value = "INVOKE",
-        target = "Lnet/minecraft/server/network/ServerPlayNetworkHandler;sendPacket(Lnet/minecraft/network/Packet;)V",
-        shift = At.Shift.AFTER,
-        ordinal = 0
+        target = "Lnet/minecraft/server/network/ServerPlayNetworkHandler;sendPacket(Lnet/minecraft/network/packet/Packet;)V",
+        ordinal = 1
     ))
     private void onSendGameJoin(ClientConnection connection, ServerPlayerEntity player, CallbackInfo ci){
         if (this.shouldRefreshScreen) {
-            RegistryKey<World> dimensionKey = player.getWorld().getRegistryKey();
-            RegistryKey<World> dKey = dimensionKey == World.OVERWORLD ? World.NETHER : World.OVERWORLD;
-            DimensionType dType = player.getWorld().getDimension();
+            var dimensionKey = player.getWorld().getRegistryKey();
+            var dKey = dimensionKey == World.OVERWORLD ? World.NETHER : World.OVERWORLD;
+            var dType = player.getWorld().getDimensionKey();
             GameMode gmode = player.interactionManager.getGameMode();
 
             // Send these two packets to prevent the client from being stuck in the downloading terrain screen
@@ -58,17 +57,21 @@ public class MixinPlayerManager implements IPlayerManager {
                 gmode,
                 false,
                 false,
-                true
+                (byte) 0,
+                Optional.empty(),
+                0
             ));
             connection.send(new PlayerRespawnS2CPacket(
                 dType,
                 dimensionKey,
-                BiomeAccess.hashSeed(player.getWorld().getSeed()),
+                BiomeAccess.hashSeed(player.getServerWorld().getSeed()),
                 gmode,
                 gmode,
                 player.getWorld().isDebugWorld(),
-                player.getWorld().isFlat(),
-                true
+                player.getServerWorld().isFlat(),
+                (byte) 0,
+                Optional.empty(),
+                0
             ));
         }
         var progress_bar = ((IServer) this.server).getBackupCommandContext().progress_bar.get();
@@ -78,13 +81,13 @@ public class MixinPlayerManager implements IPlayerManager {
     }
 
     @Override
-    public void setShouldRefreshScreen(boolean bl) {
+    public void setShouldRefreshScreen(Unit u, boolean bl) {
         shouldRefreshScreen = bl;
     }
 
     @Override
-    public void fsModReset() {
-        statisticsMap.clear();
-        advancementTrackers.clear();
+    public void reset(Unit u) {
+        this.statisticsMap.clear();
+        this.advancementTrackers.clear();
     }
 }

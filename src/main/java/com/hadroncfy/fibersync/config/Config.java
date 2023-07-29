@@ -44,6 +44,4 @@ public class Config {
 
     public Path syncDir = null;
     public PathMatcher excludes = new SimpleFileExcluder();
-
-    public Formats formats = new Formats();
 }

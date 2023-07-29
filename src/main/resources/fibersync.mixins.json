@@ -12,7 +12,8 @@
       "MixinServerPlayNetworkHandler",
       "MixinServerPlayerEntity",
       "MixinServerLoginNetworkHandler",
-      "MixinServerChunkManager"
+      "MixinServerChunkManager",
+      "MixinServerScoreboard"
     ],
     "client": [
     ],
