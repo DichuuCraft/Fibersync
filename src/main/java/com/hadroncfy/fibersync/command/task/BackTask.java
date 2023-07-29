@@ -39,7 +39,7 @@ public class BackTask extends BaseTask {
     private void startBack(Boolean b) {
         if (b) {
             server.getPlayerManager().broadcast(getStartedText(), false);
-            ((IServer) server).reloadAll(new ReloadListener());
+            ((IServer) server).reloadAll(null, new ReloadListener());
         } else {
             cctx.endTask();
         }

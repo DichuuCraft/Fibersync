@@ -55,7 +55,7 @@ public class Limbo {
             var p = new AwaitingPlayer(this, player, player.networkHandler.connection);
             onPlayerConnect(p, false);
         }
-        ((IServer) this.server).setLimbo(this);
+        ((IServer) this.server).setLimbo(null, this);
     }
 
     public WorldGenerationProgressListener getWorldGenListener(){
@@ -114,7 +114,7 @@ public class Limbo {
         rollBackProgressListener.end();
 
         pm.reset(null);
-        ((IServer) this.server).setLimbo(null);
+        ((IServer) this.server).setLimbo(null, null);
 
         if (server.isSingleplayer() && players.isEmpty()){
             FibersyncMod.LOGGER.info("Stopping server as the server has no players");

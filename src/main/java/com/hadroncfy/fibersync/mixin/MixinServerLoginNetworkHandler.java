@@ -26,7 +26,7 @@ public class MixinServerLoginNetworkHandler {
         target = "Lnet/minecraft/server/PlayerManager;getPlayer(Ljava/util/UUID;)Lnet/minecraft/server/network/ServerPlayerEntity;"
     ), cancellable = true)
     private void onAcceptPlayer(CallbackInfo ci) {
-        var limbo = ((IServer) this.server).getLimbo();
+        var limbo = ((IServer) this.server).getLimbo(null);
         if (limbo != null) {
             limbo.onPlayerConnect(new AwaitingPlayer(limbo, this.profile, this.connection), true);
             ci.cancel();

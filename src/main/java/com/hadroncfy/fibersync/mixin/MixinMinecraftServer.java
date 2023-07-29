@@ -8,6 +8,7 @@ import com.hadroncfy.fibersync.command.BackupCommandContext;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.interfaces.IServerChunkManager;
 import com.hadroncfy.fibersync.interfaces.IServerScoreboard;
+import com.hadroncfy.fibersync.interfaces.Unit;
 import com.hadroncfy.fibersync.restart.IReloadListener;
 import com.hadroncfy.fibersync.restart.Limbo;
 
@@ -89,7 +90,7 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
 
 
     @Override
-    public void reloadAll(IReloadListener listener){
+    public void reloadAll(Unit u, IReloadListener listener){
         if (reloadCB == null) {
             reloadCB = listener;
         } else {
@@ -172,24 +173,24 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     }
 
     @Override
-    public void setTickTask(Runnable task, int period) {
+    public void setTickTask(Unit u, Runnable task, int period) {
         tickTask = task;
         tickTaskPeriod = period;
         tickBase = ticks;
     }
 
     @Override
-    public BackupCommandContext getBackupCommandContext() {
+    public BackupCommandContext getBackupCommandContext(Unit u) {
         return commandContext;
     }
 
     @Override
-    public Limbo getLimbo() {
+    public Limbo getLimbo(Unit u) {
         return this.limbo;
     }
 
     @Override
-    public void setLimbo(Limbo limbo) {
+    public void setLimbo(Unit u, Limbo limbo) {
         this.limbo = limbo;
     }
 }

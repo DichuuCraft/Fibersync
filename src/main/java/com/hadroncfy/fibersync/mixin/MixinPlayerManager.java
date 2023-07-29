@@ -74,7 +74,7 @@ public class MixinPlayerManager implements IPlayerManager {
                 0
             ));
         }
-        var progress_bar = ((IServer) this.server).getBackupCommandContext().progress_bar.get();
+        var progress_bar = ((IServer) this.server).getBackupCommandContext(null).progress_bar.get();
         if (progress_bar != null) {
             progress_bar.addPlayer(player);
         }

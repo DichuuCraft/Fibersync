@@ -28,7 +28,7 @@ public abstract class BaseTask {
     protected BaseTask(ServerCommandSource src){
         this.src = src;
         this.server = src.getServer();
-        this.cctx = ((IServer)server).getBackupCommandContext();
+        this.cctx = ((IServer)server).getBackupCommandContext(null);
     }
     public abstract int run();
 
