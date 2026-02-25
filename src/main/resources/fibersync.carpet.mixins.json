@@ -1,0 +1,14 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.hadroncfy.fibersync.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "MixinCarpetHUDController"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

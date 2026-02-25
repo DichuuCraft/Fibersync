@@ -3,18 +3,16 @@ package com.hadroncfy.fibersync.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.HoverEvent;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.text.ClickEvent.Action;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
 import net.minecraft.util.Formatting;
 
 public class Formats {
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting()
-        .registerTypeHierarchyAdapter(Text.class, new Text.Serializer())
-        .registerTypeHierarchyAdapter(Style.class, new Style.Serializer()).create();
+        .registerTypeHierarchyAdapter(Text.class, new TextJsonAdapter()).create();
 
     private static MutableText red(String s){
         return Text.literal(s).setStyle(Style.EMPTY.withColor(Formatting.RED));
@@ -38,15 +36,15 @@ public class Formats {
     public Text backupListTitle = Text.literal("存档列表：").setStyle(Style.EMPTY.withColor(Formatting.BLUE));
     public Text mirrorListTitle = Text.literal("镜像存档列表：").setStyle(Style.EMPTY.withColor(Formatting.BLUE));
     public Text backupListItem = Text.empty().append(Text.literal("-[$1]").setStyle(Style.EMPTY.withColor(Formatting.GREEN)
-            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("点击回档至该存档").setStyle(Style.EMPTY.withColor(Formatting.GRAY).withItalic(true))))
-            .withClickEvent(new ClickEvent(Action.RUN_COMMAND, "/fs back $1"))))
+            .withHoverEvent(new HoverEvent.ShowText(Text.literal("点击回档至该存档").setStyle(Style.EMPTY.withColor(Formatting.GRAY).withItalic(true))))
+            .withClickEvent(new ClickEvent.RunCommand("/fs back $1"))))
         .append(Text.literal(" 时间：").setStyle(Style.EMPTY.withColor(Formatting.WHITE)))
         .append(Text.literal("$3").setStyle(Style.EMPTY.withColor(Formatting.GREEN)))
         .append(Text.literal(" 描述：").setStyle(Style.EMPTY.withColor(Formatting.WHITE)))
         .append(Text.literal("$2").setStyle(Style.EMPTY.withColor(Formatting.GREEN)));
     public Text lockedBackupListItem = Text.empty().append(Text.literal("-[$1]").setStyle(Style.EMPTY.withColor(Formatting.RED)
-            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("（此存档已锁定）点击回档至该存档").setStyle(Style.EMPTY.withColor(Formatting.GRAY).withItalic(true))))
-            .withClickEvent(new ClickEvent(Action.RUN_COMMAND, "/fs back $1"))))
+            .withHoverEvent(new HoverEvent.ShowText(Text.literal("（此存档已锁定）点击回档至该存档").setStyle(Style.EMPTY.withColor(Formatting.GRAY).withItalic(true))))
+            .withClickEvent(new ClickEvent.RunCommand("/fs back $1"))))
         .append(Text.literal(" 时间：").setStyle(Style.EMPTY.withColor(Formatting.WHITE)))
         .append(Text.literal("$3").setStyle(Style.EMPTY.withColor(Formatting.GREEN)))
         .append(Text.literal(" 描述：").setStyle(Style.EMPTY.withColor(Formatting.WHITE)))
@@ -96,4 +94,7 @@ public class Formats {
     public Text syncFailed = red("[Fibersync] 同步失败：$1");
     public Text syncCountDownTitle = Text.empty().append(Text.literal("准备同步：").setStyle(Style.EMPTY.withColor(Formatting.GREEN)))
         .append(Text.literal("$1").setStyle(Style.EMPTY.withBold(true)));
+    public Text showhandEnabled = Text.literal("[Fibersync] 已开启 showhand 模式（无需确认）");
+    public Text showhandDisabled = Text.literal("[Fibersync] 已关闭 showhand 模式（恢复确认）");
+    public Text failedToSaveConfig = red("[Fibersync] 配置写入失败：$1");
 }

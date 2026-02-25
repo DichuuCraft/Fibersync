@@ -16,7 +16,12 @@ import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 public class BackupCommandContext {
     private final BackupFactory bf = new BackupFactory(this::getBackupPath);
     private final BackupFactory mirrorFactory = new BackupFactory(BackupCommandContext::getMirrorPath);
-    private final ConfirmationManager cm = new ConfirmationManager(FibersyncMod::getFormat, 20000, 1000);;
+    private final ConfirmationManager cm = new ConfirmationManager(
+        FibersyncMod::getFormat,
+        () -> FibersyncMod.getConfig().showhand,
+        20000,
+        1000
+    );
     private final TaskManager taskmgr = new TaskManager();
     private CountDownTask countDownTask;
     private final Supplier<String> levelName;

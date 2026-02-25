@@ -15,14 +15,13 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.network.ServerRecipeBook;
 import net.minecraft.stat.ServerStatHandler;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 @Mixin(ServerPlayerEntity.class)
 public abstract class MixinServerPlayerEntity extends PlayerEntity implements IPlayer {
 
-    public MixinServerPlayerEntity(World world, BlockPos pos, float yaw, GameProfile profile) {
-        super(world, pos, yaw, profile);
+    public MixinServerPlayerEntity(World world, GameProfile profile) {
+        super(world, profile);
     }
 
     @Shadow @Final
@@ -37,7 +36,8 @@ public abstract class MixinServerPlayerEntity extends PlayerEntity implements IP
     @Override
     public void reset(Unit u) {
         this.unsetRemoved();
-        recipeBook = new ServerRecipeBook();
+        recipeBook = new ServerRecipeBook((recipeKey, adder) ->
+            server.getRecipeManager().forEachRecipeDisplay(recipeKey, adder));
         statHandler = server.getPlayerManager().createStatHandler((ServerPlayerEntity)(Object)this);
         advancementTracker = server.getPlayerManager().getAdvancementTracker((ServerPlayerEntity)(Object)this);
         ((ContainerAccessor)currentScreenHandler).getListeners().clear();// avoid inventory desync

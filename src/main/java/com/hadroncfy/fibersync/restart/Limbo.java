@@ -14,22 +14,30 @@ import com.hadroncfy.fibersync.interfaces.IPlayerManager;
 import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.util.copy.FileOperationProgressListener;
 
+import net.minecraft.entity.EntityPosition;
 import net.minecraft.entity.player.PlayerAbilities;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.CommonPlayerSpawnInfo;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.PlayerConfigEntry;
 import net.minecraft.server.PlayerManager;
-import net.minecraft.server.WorldGenerationProgressListener;
+import net.minecraft.server.network.ConnectedClientData;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.NbtReadView;
+import net.minecraft.storage.ReadView;
 import net.minecraft.text.Text;
+import net.minecraft.util.ErrorReporter;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec2f;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
-import net.minecraft.world.dimension.DimensionTypes;
 
 public class Limbo {
     public final Set<RegistryKey<World>> world_keys;
@@ -58,32 +66,34 @@ public class Limbo {
         ((IServer) this.server).setLimbo(null, this);
     }
 
-    public WorldGenerationProgressListener getWorldGenListener(){
-        return rollBackProgressListener;
-    }
-
     public FileOperationProgressListener getFileCopyListener(){
         return rollBackProgressListener;
     }
 
+    public void startWorldGen(){
+        rollBackProgressListener.startSpawn();
+    }
+
+    public void finishWorldGen(){
+        rollBackProgressListener.finishSpawn();
+    }
+
     public void onPlayerConnect(AwaitingPlayer p, boolean sendJoin){
         if (sendJoin) {
+            CommonPlayerSpawnInfo spawnInfo = createLimboSpawnInfo(GameMode.SPECTATOR);
+            PlayerManager playerManager = server.getPlayerManager();
             p.connection.send(new GameJoinS2CPacket(
                 0,
-                false,
-                GameMode.SPECTATOR,
-                GameMode.SPECTATOR,
+                server.getSaveProperties().isHardcore(),
                 this.world_keys,
-                this.server.getRegistryManager(),
-                DimensionTypes.OVERWORLD,
-                World.OVERWORLD,
-                0L,
-                20,
-                10,
-                10,
-                false, false, false, false,
-                Optional.empty(),
-                0
+                playerManager.getMaxPlayerCount(),
+                playerManager.getViewDistance(),
+                playerManager.getSimulationDistance(),
+                false,
+                true,
+                false,
+                spawnInfo,
+                false
             ));
         }
         PlayerAbilities abilities = new PlayerAbilities();
@@ -93,10 +103,14 @@ public class Limbo {
         abilities.flying = true;
         abilities.creativeMode = false;
         p.connection.send(new PlayerAbilitiesS2CPacket(abilities));
-        p.connection.send(new PlayerPositionLookS2CPacket(0, 0, 0, 0, 0, Collections.emptySet(), 0));
+        p.connection.send(new PlayerPositionLookS2CPacket(
+            0,
+            new EntityPosition(new Vec3d(0.0, 0.0, 0.0), Vec3d.ZERO, 0.0F, 0.0F),
+            Collections.emptySet()
+        ));
         rollBackProgressListener.onPlayerConnected(p);
 
-        FibersyncMod.LOGGER.info("Player {} joined limbo", p.profile.getName());
+        FibersyncMod.LOGGER.info("Player {} joined limbo", p.profile.name());
         addPlayer(p);
     }
 
@@ -128,13 +142,48 @@ public class Limbo {
                 // carpet.patches.EntityPlayerMPFake, or
                 // com.hadroncfy.sreplay.recording.Photographer.
                 var playerEntity = player.entity;
+                ConnectedClientData clientData = createClientData(player);
                 if (playerEntity == null) {
-                    playerEntity = playerManager.createPlayer(player.profile);
+                    playerEntity = new ServerPlayerEntity(this.server, dummy, player.profile, clientData.syncedOptions());
                 }
-                playerEntity.setWorld(dummy); // avoid NullPointException when loading player data
-                ((IPlayer)playerEntity).reset(null);
+                var entry = new PlayerConfigEntry(player.profile);
+                Optional<NbtCompound> dataOpt = playerManager.loadPlayerData(entry);
+                ReadView readView = null;
+                Optional<ServerPlayerEntity.SavePos> savePosOpt = Optional.empty();
+                ErrorReporter.Logging reporter = null;
+                if (dataOpt.isPresent()) {
+                    reporter = new ErrorReporter.Logging(playerEntity.getErrorReporterContext(), FibersyncMod.LOGGER);
+                    readView = NbtReadView.create(reporter, server.getRegistryManager(), dataOpt.get());
+                    savePosOpt = readView.read(ServerPlayerEntity.SavePos.CODEC);
+                }
 
-                playerManager.onPlayerConnect(player.connection, playerEntity);
+                var spawnPoint = server.getSaveProperties().getMainWorldProperties().getSpawnPoint();
+                ServerWorld targetWorld = savePosOpt.flatMap(ServerPlayerEntity.SavePos::dimension)
+                    .map(server::getWorld)
+                    .orElseGet(() -> {
+                        ServerWorld w = server.getWorld(spawnPoint.getDimension());
+                        return w != null ? w : server.getOverworld();
+                    });
+                playerEntity.setServerWorld(targetWorld); // keep interactionManager in sync
+                ((IPlayer)playerEntity).reset(null);
+                if (readView != null) {
+                    playerEntity.readData(readView);
+                }
+
+                Vec3d targetPos = savePosOpt.flatMap(ServerPlayerEntity.SavePos::position)
+                    .orElseGet(() -> Vec3d.of(spawnPoint.getPos()));
+                Vec2f targetRot = savePosOpt.flatMap(ServerPlayerEntity.SavePos::rotation)
+                    .orElseGet(() -> new Vec2f(spawnPoint.yaw(), spawnPoint.pitch()));
+                playerEntity.refreshPositionAndAngles(targetPos, targetRot.x, targetRot.y);
+
+                playerManager.onPlayerConnect(player.connection, playerEntity, clientData);
+                if (readView != null) {
+                    playerEntity.readEnderPearls(readView);
+                    playerEntity.readRootVehicle(readView);
+                }
+                if (reporter != null) {
+                    reporter.close();
+                }
             }
             pm.setShouldRefreshScreen(null, false);
         }
@@ -161,8 +210,31 @@ public class Limbo {
             AwaitingPlayer p = iterator.next();
             if (p.removed){
                 iterator.remove();
-                FibersyncMod.LOGGER.info("Player {} left limbo", p.profile.getName());
+                FibersyncMod.LOGGER.info("Player {} left limbo", p.profile.name());
             }
         }
+    }
+
+    private ConnectedClientData createClientData(AwaitingPlayer player) {
+        if (player.entity != null) {
+            return new ConnectedClientData(player.profile, 0, player.entity.getClientOptions(), false);
+        }
+        return ConnectedClientData.createDefault(player.profile, false);
+    }
+
+    private CommonPlayerSpawnInfo createLimboSpawnInfo(GameMode gameMode) {
+        ServerWorld world = server.getOverworld();
+        return new CommonPlayerSpawnInfo(
+            world.getDimensionEntry(),
+            world.getRegistryKey(),
+            world.getSeed(),
+            gameMode,
+            gameMode,
+            world.isDebugWorld(),
+            world.isFlat(),
+            Optional.empty(),
+            0,
+            world.getSeaLevel()
+        );
     }
 }

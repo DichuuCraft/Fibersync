@@ -2,7 +2,7 @@
     "required": true,
     "minVersion": "0.8",
     "package": "com.hadroncfy.fibersync.mixin",
-    "compatibilityLevel": "JAVA_8",
+    "compatibilityLevel": "JAVA_21",
     "mixins": [
       "MixinCommandManager",
       "MixinMinecraftServer",
@@ -13,7 +13,11 @@
       "MixinServerPlayerEntity",
       "MixinServerLoginNetworkHandler",
       "MixinServerChunkManager",
-      "MixinServerScoreboard"
+      "MixinServerScoreboard",
+      "ScoreboardAccessor",
+      "ServerCommonNetworkHandlerAccessor",
+      "ServerConfigurationNetworkHandlerAccessor",
+      "ClientConnectionAccessor"
     ],
     "client": [
     ],

@@ -15,9 +15,6 @@ public class AwaitingPlayer {
         this.entity = entity;
         this.connection = connection;
         this.profile = entity.getGameProfile();
-        if (entity != null) {
-            entity.setWorld(null);
-        }
         this.handler = new ServerDummyPlayHandler(limbo, this);
     }
     public AwaitingPlayer(Limbo limbo, GameProfile profile, ClientConnection connection){

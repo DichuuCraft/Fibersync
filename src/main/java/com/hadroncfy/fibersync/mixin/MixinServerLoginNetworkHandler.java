@@ -4,31 +4,32 @@ import com.hadroncfy.fibersync.interfaces.IServer;
 import com.hadroncfy.fibersync.restart.AwaitingPlayer;
 import com.mojang.authlib.GameProfile;
 
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import net.minecraft.network.ClientConnection;
+import net.minecraft.network.packet.c2s.config.ReadyC2SPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerLoginNetworkHandler;
+import net.minecraft.server.network.ServerCommonNetworkHandler;
+import net.minecraft.server.network.ServerConfigurationNetworkHandler;
 
-@Mixin(ServerLoginNetworkHandler.class)
+@Mixin(ServerConfigurationNetworkHandler.class)
 public class MixinServerLoginNetworkHandler {
-    @Shadow @Final MinecraftServer server;
-    @Shadow @Final public ClientConnection connection;
-    @Shadow GameProfile profile;
-
-    @Inject(method = "acceptPlayer", at = @At(
+    @Inject(method = "onReady", at = @At(
         value = "INVOKE",
-        target = "Lnet/minecraft/server/PlayerManager;getPlayer(Ljava/util/UUID;)Lnet/minecraft/server/network/ServerPlayerEntity;"
+        target = "Lnet/minecraft/network/ClientConnection;transitionOutbound(Lnet/minecraft/network/state/NetworkState;)V",
+        shift = At.Shift.AFTER
     ), cancellable = true)
-    private void onAcceptPlayer(CallbackInfo ci) {
-        var limbo = ((IServer) this.server).getLimbo(null);
+    private void onReady(ReadyC2SPacket packet, CallbackInfo ci) {
+        ServerCommonNetworkHandler common = (ServerCommonNetworkHandler) (Object) this;
+        ServerCommonNetworkHandlerAccessor access = (ServerCommonNetworkHandlerAccessor) common;
+        ServerConfigurationNetworkHandlerAccessor configAccess = (ServerConfigurationNetworkHandlerAccessor) this;
+        MinecraftServer server = access.fibersync$getServer();
+        var limbo = ((IServer) server).getLimbo(null);
         if (limbo != null) {
-            limbo.onPlayerConnect(new AwaitingPlayer(limbo, this.profile, this.connection), true);
+            GameProfile profile = configAccess.fibersync$getProfile();
+            limbo.onPlayerConnect(new AwaitingPlayer(limbo, profile, access.fibersync$getConnection()), true);
             ci.cancel();
         }
     }

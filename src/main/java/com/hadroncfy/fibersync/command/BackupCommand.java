@@ -29,6 +29,10 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 import net.minecraft.command.argument.MessageArgumentType;
+import net.minecraft.command.permission.Permission;
+import net.minecraft.command.permission.PermissionCheck;
+import net.minecraft.command.permission.PermissionLevel;
+import net.minecraft.command.permission.PermissionSourcePredicate;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 
@@ -40,13 +44,22 @@ import static com.hadroncfy.fibersync.FibersyncMod.getFormat;
 import static com.hadroncfy.fibersync.FibersyncMod.getConfig;
 
 public class BackupCommand {
-    public static final String NAME = "fs";
-
     private static final String ARG_DESC = "description";
     private static final String ARG_NAME = "name";
+    private static final PermissionSourcePredicate<ServerCommandSource> LOCK_PERMISSION =
+        net.minecraft.server.command.CommandManager.requirePermissionLevel(
+            new PermissionCheck.Require(new Permission.Level(PermissionLevel.fromLevel(1))));
 
     public static void register(CommandDispatcher<ServerCommandSource> cd) {
-        final LiteralArgumentBuilder<ServerCommandSource> b = literal(NAME)
+        String primary = getCommandName();
+        registerRoot(cd, primary);
+        if (!"fs".equals(primary)) {
+            registerRoot(cd, "fs");
+        }
+    }
+
+    private static void registerRoot(CommandDispatcher<ServerCommandSource> cd, String name) {
+        final LiteralArgumentBuilder<ServerCommandSource> b = literal(name)
                 .then(literal("list").executes(src -> list(src, false))
                     .then(literal("sync")
                         .requires(BackupCommand::isMirrorMode)
@@ -73,6 +86,10 @@ public class BackupCommand {
                 .then(literal("confirm")
                     .then(argument("code", IntegerArgumentType.integer()).executes(BackupCommand::confirm)))
                 .then(literal("cancel").executes(BackupCommand::cancel))
+                .then(literal("showhand")
+                    .executes(ctx -> setShowhand(ctx, true))
+                        .then(literal("stop")
+                            .executes(ctx -> setShowhand(ctx, false))))
                 .then(literal("reload").executes(BackupCommand::reload))
                 .then(literal("delete")
                     .then(argument(ARG_NAME, StringArgumentType.word())
@@ -86,6 +103,18 @@ public class BackupCommand {
                         .then(argument(ARG_NAME, StringArgumentType.word())
                         .suggests(BackupCommand::suggestLockedBackups).executes(ctx -> setLocked(ctx, false))));
         cd.register(b);
+    }
+
+    public static String getCommandName() {
+        String name = getConfig().command;
+        if (name == null) {
+            return "fs";
+        }
+        name = name.trim();
+        if (name.isEmpty() || name.contains(" ")) {
+            return "fs";
+        }
+        return name;
     }
 
     private static boolean isMirrorMode(ServerCommandSource src){
@@ -134,7 +163,8 @@ public class BackupCommand {
     }
 
     private static boolean canLock(ServerCommandSource src) {
-        return src.hasPermissionLevel(1);
+        // Allow all users to lock/unlock backups.
+        return true;
     }
 
     private static int reload(CommandContext<ServerCommandSource> ctx) {
@@ -145,6 +175,19 @@ public class BackupCommand {
             return 0;
         } catch (Exception e) {
             src.sendError(render(getFormat().failedToLoadConfig, e.toString()));
+            return 1;
+        }
+    }
+
+    private static int setShowhand(CommandContext<ServerCommandSource> ctx, boolean enabled) {
+        final ServerCommandSource src = ctx.getSource();
+        getConfig().showhand = enabled;
+        try {
+            FibersyncMod.saveConfig();
+            src.sendFeedback(() -> enabled ? getFormat().showhandEnabled : getFormat().showhandDisabled, true);
+            return 0;
+        } catch (Exception e) {
+            src.sendError(render(getFormat().failedToSaveConfig, e.toString()));
             return 1;
         }
     }
@@ -341,7 +384,8 @@ public class BackupCommand {
 
     private static int list(CommandContext<ServerCommandSource> ctx, boolean isMirror){
         final ServerCommandSource src = ctx.getSource();
-        final BackupCommandContext cctx = ((IServer)src.getServer()).getBackupCommandContext(null);
+        final MinecraftServer server = src.getServer();
+        final BackupCommandContext cctx = ((IServer)server).getBackupCommandContext(null);
         final List<BackupEntry> entries = (isMirror ? cctx.getMirrorFactory() : cctx.getBackupFactory()).getBackups();
         Collections.sort(entries);
         CompletableFuture.runAsync(() -> {
@@ -350,20 +394,21 @@ public class BackupCommand {
                 for (BackupEntry entry: entries){
                     totalSize += entry.totalSize();
                 }
-
-                src.sendFeedback(() -> isMirror ? getFormat().mirrorListTitle : getFormat().backupListTitle, false);
-                for (BackupEntry entry: entries){
-                    src.sendFeedback(() -> render(
-                        entry.getInfo().locked ? getFormat().lockedBackupListItem : getFormat().backupListItem,
-                        entry.getInfo().name,
-                        entry.getInfo().description,
-                        getConfig().dateFormat.format(entry.getInfo().date)
-                    ), false);
-                }
                 final long totalSize2 = totalSize;
-                src.sendFeedback(() -> render(getFormat().backupListFooter, String.format("%.2f", (float)totalSize2 / 1024 / 1024)), false);
+                server.execute(() -> {
+                    src.sendFeedback(() -> isMirror ? getFormat().mirrorListTitle : getFormat().backupListTitle, false);
+                    for (BackupEntry entry: entries){
+                        src.sendFeedback(() -> render(
+                            entry.getInfo().locked ? getFormat().lockedBackupListItem : getFormat().backupListItem,
+                            entry.getInfo().name,
+                            entry.getInfo().description,
+                            getConfig().dateFormat.format(entry.getInfo().date)
+                        ), false);
+                    }
+                    src.sendFeedback(() -> render(getFormat().backupListFooter, String.format("%.2f", (float)totalSize2 / 1024 / 1024)), false);
+                });
             } catch(Exception e) {
-                src.sendError(render(getFormat().failedToRetrieveList, e.toString()));
+                server.execute(() -> src.sendError(render(getFormat().failedToRetrieveList, e.toString())));
                 e.printStackTrace();
             }
         });

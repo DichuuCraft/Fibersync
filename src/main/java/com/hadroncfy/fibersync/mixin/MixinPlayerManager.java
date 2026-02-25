@@ -1,7 +1,6 @@
 package com.hadroncfy.fibersync.mixin;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import com.hadroncfy.fibersync.interfaces.IPlayerManager;
@@ -14,18 +13,22 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.minecraft.advancement.PlayerAdvancementTracker;
 import net.minecraft.network.ClientConnection;
+import net.minecraft.network.listener.PacketListener;
+import net.minecraft.network.packet.s2c.play.CommonPlayerSpawnInfo;
 import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
+import net.minecraft.network.state.NetworkState;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.PlayerManager;
+import net.minecraft.server.network.ConnectedClientData;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.stat.ServerStatHandler;
-import net.minecraft.world.GameMode;
 import net.minecraft.world.World;
-import net.minecraft.world.biome.source.BiomeAccess;
+import net.minecraft.server.world.ServerWorld;
 
 @Mixin(PlayerManager.class)
 public class MixinPlayerManager implements IPlayerManager {
@@ -40,44 +43,44 @@ public class MixinPlayerManager implements IPlayerManager {
         target = "Lnet/minecraft/server/network/ServerPlayNetworkHandler;sendPacket(Lnet/minecraft/network/packet/Packet;)V",
         ordinal = 1
     ))
-    private void onSendGameJoin(ClientConnection connection, ServerPlayerEntity player, CallbackInfo ci){
+    private void onSendGameJoin(ClientConnection connection, ServerPlayerEntity player, ConnectedClientData clientData, CallbackInfo ci){
         if (this.shouldRefreshScreen) {
-            var dimensionKey = player.getWorld().getRegistryKey();
+            ServerWorld currentWorld = (ServerWorld) player.getEntityWorld();
+            var dimensionKey = currentWorld.getRegistryKey();
             var dKey = dimensionKey == World.OVERWORLD ? World.NETHER : World.OVERWORLD;
-            var dType = player.getWorld().getDimensionKey();
-            GameMode gmode = player.interactionManager.getGameMode();
+            ServerWorld altWorld = this.server.getWorld(dKey);
+            if (altWorld == null) {
+                altWorld = currentWorld;
+            }
 
             // Send these two packets to prevent the client from being stuck in the downloading terrain screen
             // https://github.com/VelocityPowered/Velocity/blob/master/proxy/src/main/java/com/velocitypowered/proxy/connection/backend/TransitionSessionHandler.java
-            connection.send(new PlayerRespawnS2CPacket(
-                dType,
-                dKey,
-                0,
-                gmode,
-                gmode,
-                false,
-                false,
-                (byte) 0,
-                Optional.empty(),
-                0
-            ));
-            connection.send(new PlayerRespawnS2CPacket(
-                dType,
-                dimensionKey,
-                BiomeAccess.hashSeed(player.getServerWorld().getSeed()),
-                gmode,
-                gmode,
-                player.getWorld().isDebugWorld(),
-                player.getServerWorld().isFlat(),
-                (byte) 0,
-                Optional.empty(),
-                0
-            ));
+            CommonPlayerSpawnInfo altInfo = player.createCommonPlayerSpawnInfo(altWorld);
+            CommonPlayerSpawnInfo currentInfo = player.createCommonPlayerSpawnInfo(currentWorld);
+            connection.send(new PlayerRespawnS2CPacket(altInfo, (byte) 0));
+            connection.send(new PlayerRespawnS2CPacket(currentInfo, (byte) 0));
         }
         var progress_bar = ((IServer) this.server).getBackupCommandContext(null).progress_bar.get();
         if (progress_bar != null) {
             progress_bar.addPlayer(player);
         }
+    }
+
+    @Redirect(
+        method = "onPlayerConnect",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/ClientConnection;transitionInbound(Lnet/minecraft/network/state/NetworkState;Lnet/minecraft/network/listener/PacketListener;)V"
+        )
+    )
+    private void fibersync$transitionInbound(ClientConnection connection, NetworkState<?> state, PacketListener listener) {
+        if (this.shouldRefreshScreen || ((IServer) this.server).getLimbo(null) != null) {
+            ClientConnectionAccessor accessor = (ClientConnectionAccessor) (Object) connection;
+            accessor.fibersync$setPacketListener(listener);
+            accessor.fibersync$setPrePlayStateListener(null);
+            return;
+        }
+        connection.transitionInbound((NetworkState) state, listener);
     }
 
     @Override

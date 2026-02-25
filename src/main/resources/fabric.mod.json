@@ -24,12 +24,14 @@
       ]
     },
     "mixins": [
-      "fibersync.mixins.json"
+      "fibersync.mixins.json",
+      "fibersync.carpet.mixins.json"
     ],
   
     "depends": {
-      "fabricloader": ">=0.7.4",
-      "minecraft": "1.20.*"
+      "fabricloader": ">=0.18.1",
+      "minecraft": "1.21.11",
+      "java": ">=21"
     },
     "suggests": {
       "flamingo": "*"

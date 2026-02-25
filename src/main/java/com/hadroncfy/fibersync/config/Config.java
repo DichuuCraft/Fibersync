@@ -12,14 +12,11 @@ import com.google.gson.GsonBuilder;
 import com.hadroncfy.fibersync.util.SimpleFileExcluder;
 import com.hadroncfy.fibersync.util.copy.FileSkipMode;
 
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.util.LowercaseEnumTypeAdapterFactory;
 
 public class Config {
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting()
-        .registerTypeHierarchyAdapter(Text.class, new Text.Serializer())
-        .registerTypeHierarchyAdapter(Style.class, new Style.Serializer())
+        .registerTypeHierarchyAdapter(Text.class, new TextJsonAdapter())
         .registerTypeAdapterFactory(new LowercaseEnumTypeAdapterFactory())
         .registerTypeAdapter(SimpleDateFormat.class, new SimpleDateFormatSerializer())
         .registerTypeHierarchyAdapter(Path.class, new PathSerializer())
@@ -41,7 +38,9 @@ public class Config {
     public String oldWorldName = "oldworld", oldWorldDescription = "回档前自动备份";
     public boolean removeTargetDirBeforeCopy = false;
     public FileSkipMode fileSkipMode = FileSkipMode.CHECKSUM;
+    public boolean showhand = false;
 
     public Path syncDir = null;
     public PathMatcher excludes = new SimpleFileExcluder();
+    public String command = "fs";
 }

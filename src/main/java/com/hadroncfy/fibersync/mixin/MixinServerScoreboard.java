@@ -1,6 +1,5 @@
 package com.hadroncfy.fibersync.mixin;
 
-import java.util.List;
 import java.util.Set;
 
 import org.spongepowered.asm.mixin.Final;
@@ -15,12 +14,17 @@ import net.minecraft.scoreboard.ServerScoreboard;
 
 @Mixin(ServerScoreboard.class)
 public class MixinServerScoreboard implements IServerScoreboard {
-    @Shadow @Final private Set<ScoreboardObjective> objectives;
-    @Shadow @Final private List<Runnable> updateListeners;
+    @Shadow @Final private Set<ScoreboardObjective> syncableObjectives;
 
     @Override
     public void reset(Unit u) {
-        this.objectives.clear();
-        this.updateListeners.clear();
+        ScoreboardAccessor scoreboard = (ScoreboardAccessor) (Object) this;
+        scoreboard.fibersync$getObjectives().clear();
+        scoreboard.fibersync$getObjectivesByCriterion().clear();
+        scoreboard.fibersync$getScores().clear();
+        scoreboard.fibersync$getObjectiveSlots().clear();
+        scoreboard.fibersync$getTeams().clear();
+        scoreboard.fibersync$getTeamsByScoreHolder().clear();
+        this.syncableObjectives.clear();
     }
 }

@@ -23,10 +23,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.registry.CombinedDynamicRegistries;
+import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
-import net.minecraft.registry.RegistryOps;
 import net.minecraft.registry.ServerDynamicRegistryType;
 import net.minecraft.resource.DataConfiguration;
 import net.minecraft.resource.ResourcePackManager;
@@ -34,12 +33,10 @@ import net.minecraft.scoreboard.ServerScoreboard;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerNetworkIo;
 import net.minecraft.server.ServerTask;
-import net.minecraft.server.WorldGenerationProgressListener;
-import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.thread.ReentrantThreadExecutor;
 import net.minecraft.world.SaveProperties;
-import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.world.World;
 import net.minecraft.world.level.storage.LevelStorage;
 
 @Mixin(MinecraftServer.class)
@@ -50,7 +47,6 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
 
     @Unique private static final Logger LOGGER = LoggerFactory.getLogger("name");
 
-    @Shadow @Final protected WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory;
     @Shadow @Final protected LevelStorage.Session session;
     @Shadow @Final private ServerNetworkIo networkIo;
     @Shadow @Final private ResourcePackManager dataPackManager;
@@ -58,16 +54,16 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     @Shadow private volatile boolean running;
 
     // things that needs reseting
-    @Shadow @Final private Map<DimensionType, ServerWorld> worlds;
+    @Shadow @Final private Map<RegistryKey<World>, ServerWorld> worlds;
     @Shadow @Final private ServerScoreboard scoreboard;
     @Shadow @Mutable protected SaveProperties saveProperties;
     @Shadow @Mutable private CombinedDynamicRegistries<ServerDynamicRegistryType> combinedDynamicRegistries;
 
     @Shadow
-    public abstract void prepareStartRegion(WorldGenerationProgressListener worldGenerationProgressListener);
+    public abstract void prepareStartRegion();
 
     @Shadow
-    protected abstract void createWorlds(WorldGenerationProgressListener worldGenerationProgressListener);
+    protected abstract void createWorlds();
 
     @Shadow
     protected abstract void updateDifficulty(); // setDifficulty
@@ -82,10 +78,10 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
 
     // cannot directly call original loadWorld since other mods might mixin into this method
     @Unique
-    private void loadWorld(WorldGenerationProgressListener startRegionListener) {
-        this.createWorlds(startRegionListener);
+    private void loadWorld() {
+        this.createWorlds();
         this.updateDifficulty();
-        this.prepareStartRegion(startRegionListener);
+        this.prepareStartRegion();
     }
 
 
@@ -137,7 +133,9 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
 
             LOGGER.info("Reloading");
             this.resetServer();
-            this.loadWorld(limbo.getWorldGenListener());
+            limbo.startWorldGen();
+            this.loadWorld();
+            limbo.finishWorldGen();
             limbo.end();
 
             reloadCB.onReloadDone();
@@ -152,13 +150,25 @@ public abstract class MixinMinecraftServer extends ReentrantThreadExecutor<Serve
     @Unique
     private void resetServer() {
         ((IServerScoreboard) this.scoreboard).reset(null);
-        var dataConfig = new DataConfiguration(MinecraftServer.createDataPackSettings(this.dataPackManager), this.saveProperties.getEnabledFeatures());
+        com.mojang.serialization.Dynamic<?> levelData;
+        try {
+            levelData = this.session.readLevelProperties();
+        } catch (IOException e) {
+            LOGGER.warn("failed to read level properties", e);
+            return;
+        }
+        if (levelData == null) {
+            LOGGER.warn("failed to read level properties");
+            return;
+        }
+        var levelStorage = this.session.getLevelStorage();
         var reg = this.combinedDynamicRegistries.getCombinedRegistryManager();
-        var props = this.session.readLevelProperties(RegistryOps.of(NbtOps.INSTANCE, reg), dataConfig, reg.get(RegistryKeys.DIMENSION), reg.getRegistryLifecycle());
-        if (props != null) {
-            this.saveProperties = props.getFirst();
+        DataConfiguration dataConfig = levelStorage.parseDataPackSettings(levelData);
+        var parsed = levelStorage.parseSaveProperties(levelData, dataConfig, reg.getOrThrow(RegistryKeys.DIMENSION), reg);
+        if (parsed != null) {
+            this.saveProperties = parsed.properties();
         } else {
-            LOGGER.warn("failed to reload save properties");
+            LOGGER.warn("failed to parse save properties");
         }
     }
 
