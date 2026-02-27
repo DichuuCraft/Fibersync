@@ -1,36 +1,52 @@
 package com.hadroncfy.fibersync.restart;
 
 import com.hadroncfy.fibersync.FibersyncMod;
+import com.hadroncfy.fibersync.mixin.ClientConnectionAccessor;
 
+import io.netty.channel.Channel;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.network.ClientConnection;
+import net.minecraft.network.DisconnectionInfo;
 import net.minecraft.network.PacketCallbacks;
 import net.minecraft.network.listener.ServerPlayPacketListener;
+import net.minecraft.network.packet.c2s.common.ClientOptionsC2SPacket;
+import net.minecraft.network.packet.c2s.common.CookieResponseC2SPacket;
+import net.minecraft.network.packet.c2s.common.CommonPongC2SPacket;
+import net.minecraft.network.packet.c2s.common.CustomClickActionC2SPacket;
+import net.minecraft.network.packet.c2s.common.CustomPayloadC2SPacket;
+import net.minecraft.network.packet.c2s.common.KeepAliveC2SPacket;
+import net.minecraft.network.packet.c2s.common.ResourcePackStatusC2SPacket;
+import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
+import net.minecraft.network.packet.c2s.play.AcknowledgeChunksC2SPacket;
+import net.minecraft.network.packet.c2s.play.AcknowledgeReconfigurationC2SPacket;
 import net.minecraft.network.packet.c2s.play.AdvancementTabC2SPacket;
 import net.minecraft.network.packet.c2s.play.BoatPaddleStateC2SPacket;
 import net.minecraft.network.packet.c2s.play.BookUpdateC2SPacket;
+import net.minecraft.network.packet.c2s.play.BundleItemSelectedC2SPacket;
 import net.minecraft.network.packet.c2s.play.ButtonClickC2SPacket;
+import net.minecraft.network.packet.c2s.play.ChangeGameModeC2SPacket;
+import net.minecraft.network.packet.c2s.play.ChatCommandSignedC2SPacket;
 import net.minecraft.network.packet.c2s.play.ChatMessageC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClickSlotC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
-import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
+import net.minecraft.network.packet.c2s.play.ClientTickEndC2SPacket;
 import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
 import net.minecraft.network.packet.c2s.play.CommandExecutionC2SPacket;
 import net.minecraft.network.packet.c2s.play.CraftRequestC2SPacket;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
-import net.minecraft.network.packet.c2s.play.CustomPayloadC2SPacket;
+import net.minecraft.network.packet.c2s.play.DebugSubscriptionRequestC2SPacket;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.JigsawGeneratingC2SPacket;
-import net.minecraft.network.packet.c2s.play.KeepAliveC2SPacket;
 import net.minecraft.network.packet.c2s.play.MessageAcknowledgmentC2SPacket;
-import net.minecraft.network.packet.c2s.play.PickFromInventoryC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayPongC2SPacket;
+import net.minecraft.network.packet.c2s.play.PickItemFromBlockC2SPacket;
+import net.minecraft.network.packet.c2s.play.PickItemFromEntityC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerLoadedC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerSessionC2SPacket;
 import net.minecraft.network.packet.c2s.play.QueryBlockNbtC2SPacket;
@@ -39,10 +55,12 @@ import net.minecraft.network.packet.c2s.play.RecipeBookDataC2SPacket;
 import net.minecraft.network.packet.c2s.play.RecipeCategoryOptionsC2SPacket;
 import net.minecraft.network.packet.c2s.play.RenameItemC2SPacket;
 import net.minecraft.network.packet.c2s.play.RequestCommandCompletionsC2SPacket;
-import net.minecraft.network.packet.c2s.play.ResourcePackStatusC2SPacket;
 import net.minecraft.network.packet.c2s.play.SelectMerchantTradeC2SPacket;
+import net.minecraft.network.packet.c2s.play.SetTestBlockC2SPacket;
+import net.minecraft.network.packet.c2s.play.SlotChangedStateC2SPacket;
 import net.minecraft.network.packet.c2s.play.SpectatorTeleportC2SPacket;
 import net.minecraft.network.packet.c2s.play.TeleportConfirmC2SPacket;
+import net.minecraft.network.packet.c2s.play.TestInstanceBlockActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateBeaconC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateCommandBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateCommandBlockMinecartC2SPacket;
@@ -54,9 +72,10 @@ import net.minecraft.network.packet.c2s.play.UpdateSelectedSlotC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateSignC2SPacket;
 import net.minecraft.network.packet.c2s.play.UpdateStructureBlockC2SPacket;
 import net.minecraft.network.packet.c2s.play.VehicleMoveC2SPacket;
-import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
-import net.minecraft.network.packet.s2c.play.KeepAliveS2CPacket;
+import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
+import net.minecraft.network.packet.s2c.common.KeepAliveS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
+import net.minecraft.server.PlayerConfigEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
@@ -72,18 +91,27 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     public ServerDummyPlayHandler(Limbo limbo, AwaitingPlayer player){
         this.player = player;
         this.limbo = limbo;
-        player.connection.setPacketListener(this);
-
-        final PlayerAbilities ab = new PlayerAbilities();
-        // ab.allowFlying = true;
-        ab.flying = true;
-        player.connection.send(new PlayerAbilitiesS2CPacket(ab));
+        final ClientConnection connection = player.connection;
+        final ClientConnectionAccessor accessor = (ClientConnectionAccessor) (Object) connection;
+        Runnable init = () -> {
+            accessor.fibersync$setPacketListener(this);
+            accessor.fibersync$setPrePlayStateListener(null);
+            final PlayerAbilities ab = new PlayerAbilities();
+            // ab.allowFlying = true;
+            ab.flying = true;
+            connection.send(new PlayerAbilitiesS2CPacket(ab));
+        };
+        Channel channel = accessor.fibersync$getChannel();
+        if (channel != null) {
+            channel.eventLoop().execute(init);
+        } else {
+            init.run();
+        }
     }
 
     private void disconnect(Text reason){
         final ClientConnection connection = player.connection;
         connection.send(new DisconnectS2CPacket(reason), PacketCallbacks.always(() -> connection.disconnect(reason)));
-        connection.disableAutoRead();
         connection.handleDisconnection();
     }
 
@@ -102,9 +130,9 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onDisconnected(Text reason) {
+    public void onDisconnected(DisconnectionInfo info) {
         player.removed = true;
-        FibersyncMod.LOGGER.info("{} lost connection: {}", player.profile.getName(), reason.getString());
+        FibersyncMod.LOGGER.info("{} lost connection: {}", player.profile.name(), info.reason().getString());
     }
 
     @Override
@@ -115,7 +143,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     @Override
     public void onChatMessage(ChatMessageC2SPacket packet) {
         final String msg = packet.chatMessage();
-        Text text = Text.translatable("chat.type.text", player.profile.getName(), msg);
+        Text text = Text.translatable("chat.type.text", player.profile.name(), msg);
         // player.getEntity().networkHandler.onChatMessage(packet);
         limbo.broadcast(text);
     }
@@ -127,7 +155,31 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onClientSettings(ClientSettingsC2SPacket packet) {
+    public void onClientTickEnd(ClientTickEndC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onAcknowledgeChunks(AcknowledgeChunksC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onAcknowledgeReconfiguration(AcknowledgeReconfigurationC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onChatCommandSigned(ChatCommandSignedC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onClientOptions(ClientOptionsC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -157,7 +209,35 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
+    public void onSlotChangedState(SlotChangedStateC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onDebugSubscriptionRequest(DebugSubscriptionRequestC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
     public void onCustomPayload(CustomPayloadC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onCookieResponse(CookieResponseC2SPacket packet) {
+        // ignore
+    }
+
+    @Override
+    public void onQueryPing(QueryPingC2SPacket packet) {
+        // ignore
+    }
+
+    @Override
+    public void onCustomClickAction(CustomClickActionC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -172,7 +252,7 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     public void onKeepAlive(KeepAliveC2SPacket packet) {
         if (this.waitingForKeepAlive && packet.getId() == this.keepAliveId) {
             this.waitingForKeepAlive = false;
-         } else if (!limbo.getServer().isHost(player.profile)) {
+         } else if (!limbo.getServer().isHost(new PlayerConfigEntry(player.profile))) {
             this.disconnect(Text.translatable("disconnect.timeout", new Object[0]));
          }
     }
@@ -203,6 +283,12 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onPlayerInput(PlayerInputC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onPlayerLoaded(PlayerLoadedC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -298,7 +384,13 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onPickFromInventory(PickFromInventoryC2SPacket packet) {
+    public void onPickItemFromBlock(PickItemFromBlockC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onPickItemFromEntity(PickItemFromEntityC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -317,6 +409,18 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
 
     @Override
     public void onUpdateStructureBlock(UpdateStructureBlockC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onSetTestBlock(SetTestBlockC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void onTestInstanceBlockAction(TestInstanceBlockActionC2SPacket packet) {
         // TODO Auto-generated method stub
 
     }
@@ -358,6 +462,12 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
+    public void onChangeGameMode(ChangeGameModeC2SPacket packet) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
     public void onUpdateDifficultyLock(UpdateDifficultyLockC2SPacket packet) {
         // TODO Auto-generated method stub
 
@@ -376,33 +486,35 @@ public class ServerDummyPlayHandler implements ServerPlayPacketListener {
     }
 
     @Override
-    public void onPong(PlayPongC2SPacket packet) {
+    public void onBundleItemSelected(BundleItemSelectedC2SPacket packet) {
         // TODO Auto-generated method stub
         
     }
 
     @Override
-    public boolean isConnectionOpen() {
+    public void onPong(CommonPongC2SPacket packet) {
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'isConnectionOpen'");
+
+    }
+
+    @Override
+    public boolean isConnectionOpen() {
+        return player.connection.isOpen();
     }
 
     @Override
     public void onCommandExecution(CommandExecutionC2SPacket var1) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'onCommandExecution'");
+        // ignore
     }
 
     @Override
     public void onMessageAcknowledgment(MessageAcknowledgmentC2SPacket var1) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'onMessageAcknowledgment'");
+        // ignore
     }
 
     @Override
     public void onPlayerSession(PlayerSessionC2SPacket var1) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'onPlayerSession'");
+        // ignore
     }
 
 }

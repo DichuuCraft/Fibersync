@@ -17,10 +17,12 @@ public class ConfirmationManager {
     private final long timeout;
     private final int confirmCodeBound;
     private final Supplier<Formats> cProvider;
+    private final Supplier<Boolean> bypassConfirm;
     private static final Random random = new Random();
 
-    public ConfirmationManager(Supplier<Formats> p, long timeout, int confirmCodeBound){
+    public ConfirmationManager(Supplier<Formats> p, Supplier<Boolean> bypassConfirm, long timeout, int confirmCodeBound){
         cProvider = p;
+        this.bypassConfirm = bypassConfirm;
         this.timeout = timeout;
         this.confirmCodeBound = confirmCodeBound;
     }
@@ -30,11 +32,16 @@ public class ConfirmationManager {
     }
 
     public synchronized void submit(String label, ServerCommandSource sender, ConfirmationHandler h){
-        int code = random.nextInt(confirmCodeBound);
-        ConfirmationEntry entry = confirms.put(label, new ConfirmationEntry(label, sender, code, h));
-        if (entry != null){
-            entry.cancel();
+        ConfirmationEntry existing = confirms.remove(label);
+        if (existing != null) {
+            existing.cancel();
         }
+        if (bypassConfirm.get()) {
+            h.onConfirm(sender);
+            return;
+        }
+        int code = random.nextInt(confirmCodeBound);
+        confirms.put(label, new ConfirmationEntry(label, sender, code, h));
         sender.sendFeedback(() -> render(getFormat().confirmationHint, Integer.toString(code)), false);
     }
 

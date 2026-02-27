@@ -3,6 +3,7 @@ package com.hadroncfy.fibersync;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,6 +57,10 @@ public class FibersyncMod implements ModInitializer {
         }
         config = loadJsonConfig(dir.resolve("fibersync.json"), Config.GSON, Config.class, Config::new);
         formats = loadJsonConfig(dir.resolve("formats.json"), Formats.GSON, Formats.class, Formats::new);
+        formats = sanitizeFormats(formats);
+        try (Writer writer = Files.newBufferedWriter(dir.resolve("formats.json"), StandardCharsets.UTF_8)) {
+            writer.write(Formats.GSON.toJson(formats));
+        }
     }
 
     @Override
@@ -75,5 +80,36 @@ public class FibersyncMod implements ModInitializer {
 
     public static Formats getFormat(){
         return formats;
+    }
+
+    public static void saveConfig() throws IOException {
+        var dir = Paths.get("config");
+        if (!Files.exists(dir)){
+            Files.createDirectories(dir);
+        }
+        try (Writer writer = Files.newBufferedWriter(dir.resolve("fibersync.json"), StandardCharsets.UTF_8)) {
+            writer.write(Config.GSON.toJson(config));
+        }
+    }
+
+    private static Formats sanitizeFormats(Formats loaded) {
+        if (loaded == null) {
+            return new Formats();
+        }
+        Formats defaults = new Formats();
+        for (Field f : Formats.class.getFields()) {
+            if (f.getType() != net.minecraft.text.Text.class) {
+                continue;
+            }
+            try {
+                net.minecraft.text.Text value = (net.minecraft.text.Text) f.get(loaded);
+                if (value == null || value.getString().isEmpty()) {
+                    f.set(loaded, f.get(defaults));
+                }
+            } catch (IllegalAccessException e) {
+                // ignore
+            }
+        }
+        return loaded;
     }
 }
