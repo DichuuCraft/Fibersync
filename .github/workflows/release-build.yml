@@ -12,35 +12,33 @@ jobs:
   Build-And-Publish:
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up JDK 17
-      uses: actions/setup-java@v2
+    - uses: actions/checkout@v4
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
       with:
-        distribution: 'adopt'
-        java-version: 17
-    - name: Cache Gradle packages
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle/caches
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-        restore-keys: ${{ runner.os }}-gradle
+        distribution: 'temurin'
+        java-version: 21
+        cache: 'gradle'
     - name: Grant execute permission to gradlew
       run: chmod +x gradlew
     - name: Build with Gradle
-      run: ./gradlew build
-    - uses: actions/upload-artifact@v2
+      run: ./gradlew build --no-daemon
+    - uses: actions/upload-artifact@v4
       with:
         name: Compiled artifacts for ${{ github.sha }}
         path: build/libs
     - name: Find correct JAR
       id: findjar
       run: |
-        output="$(find build/libs/ ! -name "*-dev.jar" ! -name "*-sources.jar" -type f -printf "%f\n")"
-        echo "::set-output name=jarname::$output"
+        set -euo pipefail
+        jarname="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-dev.jar' ! -name '*-sources.jar' -printf '%f\n' | head -n 1)"
+        echo "jarname=$jarname" >> "$GITHUB_OUTPUT"
     - name: Create Github release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
